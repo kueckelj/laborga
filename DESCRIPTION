@@ -10,3 +10,15 @@ Encoding: UTF-8
 Language: es
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.0
+Imports:
+    dplyr,
+    magrittr,
+    tidyr,
+Collate: 
+    '0_imported.R'
+    'fns.R'
+    '0_r-objects.R'
+    'fns-html.R'
+    'labOrgaServer.R'
+    'labOrgaUI.R'
+    'package-dependencies.R'
