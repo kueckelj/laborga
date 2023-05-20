@@ -6,20 +6,32 @@
 
 
 
-add_id_column <- function(df, d_level, sort = TRUE){
+add_id_columns <- function(df, d_level = NULL, sort = TRUE){
 
-  id_col_df <- stringr::str_c("id_", get_d_level(df), "_num")
+  input_d_level <- get_d_level(df)
 
-  for(dl in d_level){
+  id_col_df <- stringr::str_c("id_", input_d_level, "_num")
+
+  if(base::is.null(d_level)){
+
+    d_levels <- 1:dln(input_d_level)
+
+  } else {
+
+    d_levels <- dln(d_level)
+
+  }
+
+  for(dl in d_levels){
 
     id_col_to_add <- stringr::str_c("id_", dlc(dl), "_num")
 
-    if(id_col_df != id_col_to_add){
+    if(id_col_df != id_col_to_add & !(id_col_to_add %in% base::colnames(df))){
 
       df <-
         dplyr::mutate(
           .data = df,
-          {{id_col_to_add}} := extract_id(id = df[[id_col_df]], d_level_out = dlc(d_level))
+          {{id_col_to_add}} := extract_id(id = df[[id_col_df]], d_level_out = dlc(dl))
         )
 
     }
@@ -32,10 +44,12 @@ add_id_column <- function(df, d_level, sort = TRUE){
 
   }
 
-
   return(df)
 
 }
+
+# deprecated
+add_id_column <- add_id_columns
 
 add_sample <- function(df,
                        institution,
@@ -72,6 +86,345 @@ add_sample <- function(df,
 
 
 # c -----------------------------------------------------------------------
+
+
+check_author <- function(input, error = FALSE, in_shiny = FALSE){
+
+  check_string(
+    input = input,
+    pattern = stringr::str_c("^", rgx$author),
+    ref = "author",
+    error = error,
+    in_shiny = in_shiny
+    )
+
+}
+
+
+check_input_id_vars <- function(input_id_vars, d_level, in_shiny = FALSE){
+
+  if(d_level == "tissue_donor"){
+
+    purrr::imap(
+      .x = input_id_vars,
+      .f = function(x, var_name){
+
+        var_label <- data_variables[[var_name]][["label"]]
+
+        if(x == ""){
+
+          confuns::give_feedback(
+            msg = glue::glue("Input for '{var_label}' is empty."),
+            fdb.fn = "stop",
+            in.shiny = in_shiny,
+            with.time = FALSE
+          )
+
+        }
+
+      }
+    )
+
+  } else if(d_level == "tissue_sample"){
+
+    if(input_id_vars$date_of_extraction == "1900-01-01"){
+
+      confuns::give_feedback(
+        msg = "I doubt that 1900-01-01 was the date of extraction...",
+        fdb.fn = "stop",
+        in.shiny = in_shiny,
+        with.time = FALSE
+      )
+
+    }
+
+  }
+
+}
+
+check_input_info_vars <- function(input_info_vars, d_level, in_shiny = FALSE){
+
+  if(d_level == "tissue_donor"){
+
+    if(input_info_vars$date_of_birth == "1900-01-01"){
+
+      confuns::give_feedback(
+        msg = "The oldest person, as of May 19, 2023, is Marya Branyas and she was born in the year 1907. There must be an error here...",
+        fdb.fn = "stop",
+        in.shiny = in_shiny,
+        with.time = FALSE
+      )
+
+    }
+
+    if(input_info_vars$sex == ""){
+
+      confuns::give_feedback(
+        msg = "Input for 'Sex' is empty.",
+        fdb.fn = "stop",
+        in.shiny = in_shiny,
+        with.time = FALSE
+      )
+
+    }
+
+  } else if(d_level == "tissue_sample"){
+
+    if(input_info_vars$organ == ""){
+
+      confuns::give_feedback(
+        msg = "Input for 'Organ' is empty.",
+        fdb.fn = "stop",
+        in.shiny = in_shiny,
+        with.time = FALSE
+      )
+
+    }
+
+    if(input_info_vars$organ %in% base::names(organs_parts)){
+
+      if(input_info_vars$organ_part == ""){
+
+        confuns::give_feedback(
+          msg = "Input for 'Organ Part' is empty.",
+          fdb.fn = "stop",
+          in.shiny = in_shiny,
+          with.time = FALSE
+        )
+
+      }
+
+    }
+
+    if(input_info_vars$organ %in% organs_side_needed){
+
+      if(input_info_vars$side == ""){
+
+        confuns::give_feedback(
+          msg = "Input for 'Side' is empty.",
+          fdb.fn = "stop",
+          in.shiny = in_shiny,
+          with.time = FALSE
+        )
+
+      }
+
+    }
+
+  } else if(d_level == "tissue_portion"){
+
+    # is checked prior to the call to make_entry()
+
+  } else if(d_level == "raw_data"){
+
+    if(input_info_vars$assay_trademark == ""){
+
+      confuns::give_feedback(
+        msg = "Input for 'Assay Trademark' is empty.",
+        fdb.fn = "stop",
+        in.shiny = in_shiny,
+        with.time = FALSE
+      )
+
+    }
+
+    if(input_info_vars$link_raw_data == ""){
+
+      confuns::give_feedback(
+        msg = "Input for 'Link to Data' is empty.",
+        fdb.fn = "stop",
+        in.shiny = in_shiny,
+        with.time = FALSE
+      )
+
+    }
+
+    if(!input_info_vars$pub_ref %in% c("", "unknown")){
+
+      valid <- check_pub_ref(input = input_info_vars$pub_ref, error = FALSE)
+
+      if(!valid){
+
+        confuns::give_feedback(
+          msg = "Input for 'Publication Reference' is invalid.",
+          fdb.fn = "stop",
+          in.shiny = in_shiny,
+          with.time = FALSE
+        )
+
+      }
+
+    }
+
+  }
+
+}
+
+check_input_req_vars_tissue_portion <- function(input_tissue_portion, in_shiny = FALSE){
+
+  purrr::imap(
+    .x = input_tissue_portion,
+    .f = function(input_tp, index){
+
+      if(input_tp$info$storage_mode == ""){
+
+        confuns::give_feedback(
+          msg = glue::glue("Input for 'Storage Mode' of tissue portion {index} is empty."),
+          fdb.fn = "stop",
+          with.time = FALSE,
+          in.shiny = in_shiny
+        )
+
+      }
+
+      if(input_tp$info$date_of_creation == "1900-01-01"){
+
+        confuns::give_feedback(
+          msg = glue::glue("I doubt that the 'Date of Creation' for tissue portion {index} is correct."),
+          fdb.fn = "stop",
+          with.time = FALSE,
+          in.shiny = in_shiny
+        )
+
+      }
+
+    }
+  )
+
+}
+
+check_pub_ref <- function(input, error = FALSE, in_shiny = FALSE){
+
+  check_string(
+    input = input,
+    pattern = rgx_pub_ref_final,
+    ref = "pub reference",
+    error = error,
+    in_shiny = in_shiny
+  )
+
+}
+
+check_string <- function(input, pattern, ref, error = FALSE, in_shiny = in_shiny){
+
+  valid <- stringr::str_detect(string = input, pattern = pattern)
+
+  if(base::isTRUE(error) & base::any(!valid)){
+
+    pos <-
+      base::which(!valid) %>%
+      confuns::scollapse()
+
+    confuns::give_feedback(
+      msg = glue::glue("Invalid {ref} input at '{pos}'."),
+      fdb.fn = "stop",
+      with.time = FALSE,
+      in.shiny = in_shiny
+      )
+
+  }
+
+  return(valid)
+
+}
+
+create_empty_df <- function(name_class_list){
+
+  empty_df <- tibble::tibble()
+
+  for(i in base::seq_along(name_class_list)) {
+
+    col_name <- base::names(name_class_list)[i]
+    col_class <- name_class_list[[col_name]]
+
+    if(stringr::str_detect(col_class, pattern = "^list")){
+
+      empty_df[[col_name]] <- base::vector(mode = "list")
+
+    } else if(col_class == "date"){
+
+      empty_df[[col_name]] <- lubridate::ymd()
+
+    } else if(col_class == "factor") {
+
+      empty_df[[col_name]] <- base::factor(levels = base::character(0))
+
+    } else {
+
+      empty_df[[col_name]] <- base::vector(mode = col_class)
+
+    }
+
+  }
+
+  return(empty_df)
+
+}
+
+create_empty_storage_df <- function(d_level){
+
+  d_level <- dlc(d_level)
+
+  df <-
+    purrr::keep(
+      .x = data_variables,
+      .p = ~ .x$d_level == d_level
+    ) %>%
+      purrr::map(
+        .f = ~ .x$class
+      ) %>%
+      create_empty_df()
+
+  df[[id_vars_merged[dln(d_level)]]] <- base::character(0)
+
+  df <- sort_storage_df(df)
+
+  return(df)
+
+
+}
+
+
+write_empty_storage_df <- function(d_level,
+                                   dir,
+                                   overwrite = FALSE,
+                                   verbose = TRUE,
+                                   in_shiny = FALSE){
+
+  df <- create_empty_storage_df(d_level)
+
+  storage_file <- stringr::str_c(d_level, "_storage_df.RDS")
+
+  dir_to_file <- stringr::str_c(dir, "/", storage_file)
+
+  if(base::file.exists(dir_to_file) & !base::isTRUE(overwrite)){
+
+    msg <- glue::glue("'{dir_to_file}' already exists. Set overwrite to TRUE to proceed.")
+
+    confuns::give_feedback(
+      msg = msg,
+      fdb.fn = "stop",
+      with.time = FALSE,
+      in.shiny = in_shiny
+    )
+
+  }
+
+  base::saveRDS(object = df, file = dir_to_file)
+
+  confuns::give_feedback(
+    msg = glue::glue("{dir_to_file} created."),
+    verbose = verbose,
+    with.time = FALSE
+  )
+
+  base::invisible(TRUE)
+
+}
+
+
+
+
 
 #' @title Shiny feedback messages
 #'
@@ -166,28 +519,41 @@ combine_path <- function(input){
 
 }
 
+
 complete_storage_df <- function(df, df_list = NULL, rn = FALSE){
 
   d_level <- get_d_level(df)
 
-  if(dln(d_level) != 1){
+  if(d_level != "tissue_donor"){ # tissue donor is always complete
 
-    d_levels <-
-      data_levels[1:(dln(d_level)-1)]
+    if(!is_complete(df)){
 
-    for(dl in d_levels){
+      if(dln(d_level) != 1){ # d_level == 1 is always "complete"
 
-      if(base::is.list(df_list)){
+        d_levels <-
+          data_levels[1:(dln(d_level)-1)]
 
-        df_merge <- df_list[[dl]]
+        for(dl in d_levels){
 
-      } else {
+          if(base::is.list(df_list)){
 
-        df_merge <- NULL
+            df_merge <- df_list[[dl]]
+
+          } else {
+
+            df_merge <- NULL
+
+          }
+
+          df <- merge_storage_df(df, d_level = dl, df_merge = df_merge)
+
+        }
 
       }
 
-      df <- merge_storage_df(df, d_level = dl, df_merge = df_merge)
+    } else {
+
+      warning(glue::glue("Storage data.frame level '{d_level}' is already complete."))
 
     }
 
@@ -230,6 +596,43 @@ create_id_vars <- function(df, d_level){
 
 # d -----------------------------------------------------------------------
 
+delete_entries <- function(id, in_shiny = FALSE, verbose = TRUE){
+
+  entry_level <-
+    identify_d_level(id) %>%
+    dln()
+
+  entry_level_id_var <- id_vars_merged[[entry_level]]
+
+  for(i in entry_level:4){
+
+    df <- get_storage_df(d_level = i, complete = TRUE)
+
+    filtered_df <- dplyr::filter(df, !(!!rlang::sym(entry_level_id_var) == {{id}}))
+
+    n <- (base::nrow(df)-base::nrow(filtered_df))
+
+    ref <- base::ifelse(n == 1, yes = "entry", no = "entries")
+
+    saved <- save_storage_df(filtered_df)
+
+    if(base::isTRUE(saved)){
+
+      confuns::give_feedback(
+        msg = glue::glue("Deleted {n} {dlc(i)} {ref}."),
+        with.time = FALSE,
+        in.shiny = in_shiny,
+        verbose = verbose
+        )
+
+    }
+
+  }
+
+
+  base::invisible(TRUE)
+
+}
 
 discard_id_vars <- function(df, keep = NULL){
 
@@ -450,6 +853,26 @@ ensure_data_var_validity <- function(x, var){
 }
 
 
+extract_author_first <- function(pub_ref){
+
+  if("&" %in% pub_ref){
+
+    stringr::str_extract(pub_ref, pattern = stringr::str_c(rgx$author, " & ", rgx$author))
+
+  } else {
+
+    stringr::str_extract(pub_ref, pattern = rgx$author)
+
+  }
+
+}
+
+extract_authors_all <- function(pub_ref){
+
+  stringr::str_extract_all(pub_ref, pattern = rgx$author)
+
+}
+
 extract_id <- function(id, d_level_out){
 
   input_level <- identify_d_level(id)
@@ -475,7 +898,11 @@ extract_id <- function(id, d_level_out){
 
 }
 
+extract_year <- function(pub_ref){
 
+  stringr::str_extract(pub_ref, pattern = rgx$year)
+
+}
 
 # f -----------------------------------------------------------------------
 
@@ -767,6 +1194,8 @@ get_info_vars <- function(d_level, level_spec = TRUE, flatten = TRUE){
 
 }
 
+
+
 get_storage_df <- function(d_level, complete = TRUE){
 
   df <- load_storage_df(d_level)
@@ -781,6 +1210,9 @@ get_storage_df <- function(d_level, complete = TRUE){
       df <- merge_storage_df(df, d_level = dl)
 
     }
+
+    # ensures that all sub id columns exist
+    df <- add_id_columns(df, sort = TRUE)
 
   }
 
@@ -816,6 +1248,7 @@ get_vars <- function(d_level = laborga::data_levels,
     base::names()
 
 }
+
 
 
 
@@ -880,7 +1313,6 @@ id_unite <- function(lst){
 
 }
 
-
 identify_d_level <- function(id){
 
   n <- stringr::str_count(string = id[1], pattern = id_sep_regex)
@@ -927,16 +1359,23 @@ insert_entry_index_helper <- function(indices){
 
 }
 
+is_complete <- function(df){
 
-# l -----------------------------------------------------------------------
+  d_level <- get_d_level(df)
 
-l <- function(){
+  vars_if_complete <- get_info_vars(d_level = d_level, level_spec = FALSE)
 
-  devtools::load_all()
+  out <- base::all(vars_if_complete %in% base::colnames(df))
 
-  launchLabOrga()
+  return(out)
 
 }
+
+
+
+
+
+# l -----------------------------------------------------------------------
 
 launchLabOrga <- function(){
 
@@ -951,27 +1390,30 @@ launchLabOrga <- function(){
 
 load_storage_df <- function(d_level){
 
-  if(base::is.numeric(d_level)){
+  d_level <- dlc(d_level)
 
-    d_level <- dlc(d_level)
+  file_dir <- stringr::str_c(getStorageDirectory(), "/", d_level, "_storage_df.RDS")
 
-  }
+ # base::readRDS(
+  #  file = stringr::str_c("data_private/current_", d_level, "_storage_df.RDS")
+  #)
 
-  base::readRDS(
-    file = stringr::str_c("data_private/current_", d_level, "_storage_df.RDS")
-  )
+  base::readRDS(file_dir)
 
 }
 
 
 # m -----------------------------------------------------------------------
 
+
+
+
 make_entry <- function(df,
                        input_id_vars,
                        input_info_vars,
                        prev_id_merged = NULL,
-                       shrink = FALSE,
                        save = FALSE,
+                       df_list = NULL,
                        verbose = TRUE,
                        in_shiny = FALSE,
                        ...){
@@ -979,6 +1421,18 @@ make_entry <- function(df,
   d_level <- get_d_level(df)
   id_var_merged <- id_vars_merged[dln(d_level)]
   prev_id_var_merged <- id_vars_merged[dln(d_level)-1]
+
+  check_input_id_vars(
+    input_id_vars = input_id_vars,
+    d_level = d_level,
+    in_shiny = in_shiny
+  )
+
+  check_input_info_vars(
+    input_info_vars = input_info_vars,
+    d_level = d_level,
+    in_shiny = in_shiny
+  )
 
   # ----- 1. input check
 
@@ -999,8 +1453,6 @@ make_entry <- function(df,
 
   old_ids <- base::unique(df[[id_var_merged]])
 
-  print(input_info_vars[["mutations"]])
-
   # make a new entry and
   df_new <-
     # add input_id_vars using add_row as factor levels are automatically integrated
@@ -1009,7 +1461,7 @@ make_entry <- function(df,
     # e.g. tissue_sample needs variable sample_index
     insert_entry_index(df = ., groups = base::names(input_id_vars)) %>%
     # update ID variable
-    make_id_var(df = ., shrink = shrink)
+    make_id_var(df = ., shrink = FALSE) # input is already shrunk
 
   # if data level > 1 an index is required
   double_id <-
@@ -1033,11 +1485,39 @@ make_entry <- function(df,
 
     msg <-
       glue::glue(
-        "Added {ref_entry} with ID '{new_id}'.",
-        ref_entry = confuns::make_pretty_name(d_level)
+        "Added {ref_entry} entry with ID '{new_id}'.",
+        ref_entry = dlp(d_level)
       )
 
-    confuns::give_feedback(msg = msg, verbose = verbose, with.time = FALSE, ...)
+    confuns::give_feedback(
+      msg = msg,
+      verbose = verbose,
+      in.shiny = in_shiny,
+      with.time = FALSE, ...
+      )
+
+  }
+
+  # add content of variables that are computed
+  vars_to_compute <- computed_vars_list[[d_level]]
+
+  if(base::length(vars_to_compute) >= 1){
+
+    # temporarily complete the data.frame
+    if(!is_complete(df_new)){
+
+      df_new <- complete_storage_df(df = df_new, df_list = df_list)
+
+    }
+
+    for(vtc in vars_to_compute){
+
+      df_new[[vtc]] <- data_variables[[vtc]][["compute_with"]](df = df_new)
+
+    }
+
+    # ensure shrunk output
+    df_new <- shrink_storage_df(df_new)
 
   }
 
@@ -1105,8 +1585,6 @@ make_pretty_storage_df <- function(df){
 
 
 make_raw_data_ids <- function(df){
-
-  #df <- make_tissue_portion_ids(df)
 
   dplyr::mutate(
     .data = df,
@@ -1258,7 +1736,7 @@ prepare_df_for_download <- function(df, project_dir, folder_organization = NULL)
 # creates the project main dir
 # creates the zip files folder
 # creates necessary zip subfolders if needed
-prepare_folder_for_download <- function(project_dir, folder_organization){
+prepare_folder_for_download <- function(df_prep, project_dir, folder_organization){
 
   # assumes that project_dir has been checked beforehand for validity
   base::dir.create(path = project_dir)
@@ -1268,6 +1746,8 @@ prepare_folder_for_download <- function(project_dir, folder_organization){
 
   # create sub folders if necessary
   if(base::is.character(folder_organization)){
+
+    df <- df_prep
 
     df_adj <-
       purrr::map_dfc(
@@ -1342,6 +1822,10 @@ process_choices <- function(x, action = NULL, type = NULL){
 
     out <- c("", out)
 
+  } else if(action == "edit"){
+
+    out <- out[out != ""]
+
   } else if(action == "filter"){
 
     out <- out[!out %in% c("unknown", "")]
@@ -1352,6 +1836,12 @@ process_choices <- function(x, action = NULL, type = NULL){
 
 }
 
+# remove unnecessary empty space
+process_pub_ref <- function(x){
+
+  stringr::str_replace_all(string = x, pattern = " {2,}", replacement = " ")
+
+}
 
 
 # r -----------------------------------------------------------------------
@@ -1392,12 +1882,67 @@ remove_id_column <- function(df, d_level = NULL){
 
 save_storage_df <- function(df){
 
-  dl <- get_d_level(df)
+  d_level <- get_d_level(df)
+
+  # always stores the shrinked version!!!
+  # do not change, other functions rely on that
+  df <- shrink_storage_df(df)
+
+  info_vars <- get_info_vars(d_level, level_spec = TRUE)
+
+  base::stopifnot(base::all(info_vars %in% base::colnames(df)))
+
+  dir <- getStorageDirectory()
 
   base::saveRDS(
     object = df,
-    file = stringr::str_c("data_private\\current_", dl, "_storage_df.RDS")
+    file = stringr::str_c(dir, "/", d_level, "storage_df.RDS")
   )
+
+  #base::saveRDS(
+  #  object = df,
+  #  file = stringr::str_c("data_private\\current_", dl, "_storage_df.RDS")
+  #)
+
+  base::invisible(TRUE)
+
+}
+
+
+
+
+
+show_entry <- function(id){
+
+  d_level <- identify_d_level(id)
+
+  id_var <- id_vars_merged[[d_level]]
+
+  load_storage_df(d_level) %>%
+    dplyr::filter(!!rlang::sym(id_var) == {{id}})
+
+}
+
+show_entries <- function(id, up_to = 4){
+
+  d_level <-
+    identify_d_level(id) %>%
+    dln()
+
+  id_var <- id_vars_merged[[d_level]]
+
+  purrr::map(
+    .x = 1:up_to,
+    .f = function(i){
+
+      load_storage_df(i) %>%
+        add_id_columns(df = .) %>%
+        dplyr::filter(!!rlang::sym(id_var) == {{id}}) %>%
+        shrink_storage_df()
+
+    }
+    ) %>%
+    purrr::set_names(data_levels[1:up_to])
 
 }
 
@@ -1431,7 +1976,7 @@ sort_storage_df <- function(df){
 
   dplyr::select(
     .data = df,
-    dplyr::starts_with("id_"),
+    dplyr::any_of(base::rev(id_vars_merged)),
     dplyr::any_of(prev_id_vars),
     dplyr::all_of(get_id_vars(d_level = d_level, level_spec = TRUE)),
     dplyr::any_of(get_info_vars(d_level, level_spec = FALSE))

@@ -13,11 +13,15 @@ RoxygenNote: 7.2.0
 Imports:
     dplyr,
     magrittr,
+    options,
     tidyr,
 Collate: 
     '0_imported.R'
     'fns.R'
     '0_r-objects.R'
+    'argument_dummy.R'
+    'dev.R'
+    'fns-config.R'
     'fns-html.R'
     'labOrgaServer.R'
     'labOrgaUI.R'

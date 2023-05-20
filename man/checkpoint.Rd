@@ -7,8 +7,10 @@
 checkpoint(
   evaluate = TRUE,
   case_false = NULL,
-  error_notifications = list(no_entry_selected = "Please select a row in the table.",
-    zero_tissue_portions = "Number of tissue portions to add must not be 0."),
+  error_notifications = list(invalid_project_dir = "The storage directory is invalid.",
+    no_entry_selected = "Please select a row in the table.", no_project_ids =
+    "Please add at least one data entry.", zero_tissue_portions =
+    "Number of tissue portions to add must not be 0."),
   warning_notifications = list(),
   duration = 4,
   stop_process = TRUE,

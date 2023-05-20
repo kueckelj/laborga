@@ -6,10 +6,18 @@ NULL
 
 assay_trademarks_all <- c("10X Visium Spatial Gene Expression")
 
+
+
+# c -----------------------------------------------------------------------
+
+# compute_var_list (see below due to dependencies)
+
 # d -----------------------------------------------------------------------
 
 data_levels <- c("tissue_donor", "tissue_sample", "tissue_portion", "raw_data")
 
+# data tables
+{
 data_tables <-
   list(
     # tissue donor
@@ -70,7 +78,6 @@ data_tables <-
       storage_size = numeric(1), # unit?
       preparateur_tissue_portion = character(1),
       date_of_creation = as.Date("2022-07-07"),
-      usage_count = numeric(1),
       usage_status = character(1) # unused, partly_used_succ, partly_used_unsucc, used_up_succ, lost
 
     ),
@@ -94,8 +101,26 @@ data_tables <-
 
     )
   )
+}
 
+# computed: Variable content is computed based on or extracted from other variables.
+#           e.g. pub_year is extracted from pub_ref
+#           required function is stored in slot $compute_with of the respective data
+#           variable. This function always takes the data.frame and returns the variable!
+#           Slots content is `NULL` if it is not of that type computed.
+# id      : Variable is an ID variable. Content of ID variables are merged to the data_level
+#           ID variable *id_<data_level>_num* using the function make_id_var().
+#           If $shiny_input is not a function, the variable is a simple index that
+#           is computed by make_id_var() and its subfunctions based on the number of
+#            previous entries. (e.g. tissue_portion_index)
+# optional: Variable content is optional and information can (and should) be added
+#           but it is not required to make the entry as sometimes information is
+#           only available later on (e.g. histo_class).
+# required: Variable content is not part of the ID but too relevant to be omitted and
+#           always available.
 data_var_types <- c("computed", "id", "optional", "required")
+
+# data variables
 
 data_variables <- list(
   # assay trademark
@@ -134,12 +159,23 @@ data_variables <- list(
     name = "date_of_birth",
     shiny_input = function(pref = NULL, selected = NULL, descr = TRUE, ...){
 
+      if(base::is.null(selected)){
+
+        value <- "1900-01-01"
+
+      } else {
+
+        value <- selected
+
+      }
+
       shiny::dateInput(
         inputId = stringr::str_c(pref, "date_of_birth", sep = "_"),
         label = "Date of Birth:",
-        value = selected
+        value = value,
+        startview = "year"
       ) %>%
-        htmlPopify(var = "assay_trademark", descr = descr, placement = "right")
+        htmlPopify(var = "date_of_birth", descr = descr, placement = "right")
 
     },
     type = "required"
@@ -154,12 +190,37 @@ data_variables <- list(
     name = "date_of_creation",
     shiny_input = function(pref = NULL, nth, selected = NULL, descr = TRUE, ...){
 
-      shiny::dateInput(
-        inputId = stringr::str_c(pref, "date_of_creation", nth, sep = "_"),
-        label = "Date of Creation:",
-        value = selected
-      ) %>%
-        htmlPopify(var = "date_of_creation", descr = descr, placement = "right")
+      if(pref == "inp"){
+
+        html <-
+          shinyWidgets::actionBttn(
+            inputId = stringr::str_c("date_of_creation_today_", nth),
+            label = "Today",
+            style = "material-flat",
+            color = "primary",
+            size = "sm"
+          ) %>% htmlPopify(descr = "Switch date to today.")
+
+      } else {
+
+        html <- shiny::tagList()
+
+      }
+
+      shiny::tagList(
+        shiny::column(
+          width = 12,
+          shiny::dateInput(
+            inputId = stringr::str_c(pref, "date_of_creation", nth, sep = "_"),
+            label = "Date of Creation:",
+            value = selected
+          ) %>%
+            htmlPopify(var = "date_of_creation", descr = descr, placement = "right"),
+          html
+
+        )
+      )
+
 
     },
     type = "required"
@@ -169,17 +230,29 @@ data_variables <- list(
     class = "date",
     d_level = "tissue_sample",
     description = c("The date at which the donor was operated and the tissue sample was extracted."),
-    filter = TRUE,
+    filter = FALSE,
     label = "Date of Extraction:",
     name = "date_of_extraction",
     shiny_input = function(pref = NULL, selected = NULL, descr = TRUE, ...){
 
-      shiny::dateInput(
-        inputId = stringr::str_c(pref, "date_of_extraction", sep = "_"),
-        label = "Date of Extraction:",
-        value = selected
-      ) %>%
-        htmlPopify(var = "date_of_extration", descr = descr, placement = "right")
+      shiny::tagList(
+        shiny::column(
+          width = 12,
+          shiny::dateInput(
+            inputId = stringr::str_c(pref, "date_of_extraction", sep = "_"),
+            label = "Date of Extraction:",
+            value = selected
+          ) %>%
+            htmlPopify(var = "date_of_extration", descr = descr, placement = "right"),
+          shinyWidgets::actionBttn(
+            inputId = "date_of_extraction_today",
+            label = "Today",
+            style = "material-flat",
+            color = "primary",
+            size = "sm"
+          ) %>% htmlPopify(descr = "Switch date to today.")
+        )
+      )
 
     },
     type = "id"
@@ -419,7 +492,7 @@ data_variables <- list(
 
       shiny::selectizeInput(
         inputId = stringr::str_c(pref, "organ_part", sep = "_"),
-        label = "Organ part:",
+        label = "Organ Part:",
         choices = process_choices(choices, action = pref, type = "required"),
         multiple = FALSE,
         selected = selected,
@@ -461,10 +534,10 @@ data_variables <- list(
     filter = TRUE,
     label = "Preparateur (tissue):",
     name = "preparateur_tissue_portion",
-    shiny_input = function(pref = NULL, selected = NULL, choices = NULL, descr = TRUE, ...){
+    shiny_input = function(pref = NULL, selected = NULL, nth = NULL, choices = NULL, descr = TRUE, ...){
 
       shiny::selectizeInput(
-        inputId = stringr::str_c(pref, "preparateur_tissue_portion", sep = "_"),
+        inputId = stringr::str_c(pref, "preparateur_tissue_portion", nth, sep = "_"),
         label = "Preparateur:",
         selected = selected,
         choices = choices,
@@ -508,7 +581,7 @@ data_variables <- list(
       shiny::selectizeInput(
         inputId = stringr::str_c(pref, "pub_journal", sep = "_"),
         label = "Publ. Journal:",
-        selected = selected,
+        selected = "",
         choices = choices,
         options = list(create = TRUE)
       ) %>%
@@ -521,22 +594,29 @@ data_variables <- list(
   pub_ref = list(
     class = "character",
     d_level = "raw_data",
-    description = c("The abbreviated reference with which to refer to the paper.",
-                    " E.g. 'Ravi et al., 2022'.",
-                    " Should conform to '*Author* et al., *Year*"),
+    description = "",
     filter = TRUE,
     label = "Publication Reference:",
     name = "pub_ref",
     shiny_input = function(pref = NULL, selected = NULL, choices = NULL, descr = TRUE, ...){
 
-      shiny::selectizeInput(
-        inputId = stringr::str_c(pref, "pub_ref", sep = "_"),
-        label = "Publ. Reference:",
-        selected = selected,
-        choices = choices,
-        options = list(create = TRUE)
-      ) %>%
-        htmlPopify(var = "pub_ref", descr = descr, placement = "top")
+      shiny::tagList(
+        shiny::column(
+          width = 12,
+          shiny::selectizeInput(
+            inputId = stringr::str_c(pref, "pub_ref", sep = "_"),
+            label = "Publ. Reference:",
+            selected = "",
+            choices = choices,
+            options = list(create = TRUE)
+          ),
+          shiny::helpText("Valid input formats:"),
+          purrr::map(
+            .x = valid_pub_ref_formats,
+            .f = ~shiny::helpText(.x)
+          )
+        )
+      )
 
     },
     type = "optional"
@@ -544,6 +624,12 @@ data_variables <- list(
   # pub year
   pub_year = list(
     class = "numeric",
+    compute_with = function(df){
+
+      extract_year(pub_ref = df[["pub_ref"]]) %>%
+        base::as.numeric()
+
+    },
     d_level = "raw_data",
     description = c("The year of the publication as numeric."),
     filter = TRUE,
@@ -599,11 +685,21 @@ data_variables <- list(
     name = "sex",
     shiny_input = function(pref = NULL, selected = NULL, descr = TRUE, ...){
 
+      if(base::is.null(selected)){
+
+        value <- ""
+
+      } else {
+
+        value <- selected
+
+      }
+
       shiny::selectInput(
         inputId = stringr::str_c(pref, "sex", sep = "_"),
         label = "Sex:",
-        selected = selected,
-        choices = c("unknown", "female", "male")
+        selected = value,
+        choices = c("", "unknown", "female", "male")
       )  %>%
         htmlPopify(var = "sex", descr = descr, placement = "right")
 
@@ -661,7 +757,7 @@ data_variables <- list(
         inputId = stringr::str_c(pref, "storage_mode", nth, sep = "_"),
         label = "Storage Mode:",
         selected = selected,
-        choices = storage_modes
+        choices = c("", storage_modes)
       ) %>%
         htmlPopify(var = "storage_mode", descr = descr, placement = "right")
 
@@ -699,7 +795,7 @@ data_variables <- list(
     shiny_input = function(pref = NULL, nth, selected = NULL, descr = TRUE, ...){
 
       shiny::selectInput(
-        inputId = stringr::str_c(pref, "storage_unit", sep = "_"),
+        inputId = stringr::str_c(pref, "storage_unit", nth, sep = "_"),
         label = "Unit:",
         selected = selected,
         choices = storage_units
@@ -712,22 +808,21 @@ data_variables <- list(
   # tissue age
   tissue_age = list(
     class = "numeric",
+    compute_with = function(df){
+
+      lubridate::interval(
+        start = lubridate::ymd(df[["date_of_birth"]]),
+        end = lubridate::ymd(df[["date_of_extraction"]])
+      ) %>%
+        lubridate::as.period() %>%
+        lubridate::year()
+
+    },
     d_level = "tissue_sample",
     description = c("Age of the donor during the extraction of the tissue sample."),
-    filter = FALSE,
-    label = "Tissue Age:",
+    filter = TRUE,
+    label = "Tissue Age (Years):",
     name = "tissue_age",
-    shiny_input = NULL,
-    type = "computed"
-  ),
-  # usage count
-  usage_count = list(
-    class = "character",
-    d_level = "tissue_portion",
-    description = c("Keeps track of the times a tissue portion was used to generate raw data entries."),
-    filter = FALSE,
-    label = "Usage Count:",
-    name = "usage_count",
     shiny_input = NULL,
     type = "computed"
   ),
@@ -793,13 +888,18 @@ descr_tt <- list(
                  " download and the unzipping process are displayed.")
 )
 
-
 dt_options <-
   list(
     pageLength = 5,
     scrollX = TRUE,
     scrollY = TRUE
     )
+
+
+# f -----------------------------------------------------------------------
+
+first_name <- ", [A-Z]*\\." # only in combination with last name (adds ', ' to last name)
+
 
 
 # h -----------------------------------------------------------------------
@@ -836,6 +936,9 @@ id_vars_vec <- purrr::flatten_chr(.x = id_vars_list)
 
 # l -----------------------------------------------------------------------
 
+last_name <- "[A-Z]{1}[a-z]*"
+last_name_hyphon <- "[A-Z][a-z]*-[A-Z]{1}[a-z]*"
+
 
 
 # m -----------------------------------------------------------------------
@@ -845,14 +948,12 @@ info_vars_list <-
     .x = data_levels,
     .f = function(d_level){
 
-      id_vars <- get_id_vars(d_level = d_level)
-
-      data_tables[[d_level]] %>%
-        dplyr::select(
-          -dplyr::any_of(c(id_vars, id_vars_merged)),
-          -dplyr::starts_with("id_")
-          ) %>%
-        base::colnames()
+      purrr::keep(
+        .x = data_variables,
+        .p = ~ .x$type != "id" & .x$d_level == d_level
+      ) %>%
+        base::names() %>%
+        base::sort()
 
     }
   ) %>%
@@ -997,6 +1098,28 @@ organs_side_needed <-
 
 
 # r -----------------------------------------------------------------------
+
+rgx <- list(
+  author = stringr::str_c(
+    stringr::str_c("(", last_name_hyphon, first_name, ")"),
+    stringr::str_c("(", last_name, first_name, ")"),
+    stringr::str_c("(", last_name_hyphon, ")"),
+    stringr::str_c("(", last_name, ")"),
+    sep = "|"
+  ) %>% stringr::str_c("(", ., ")"), # ^ must be added
+  et_al = " et al\\.", # note the empty space at the front
+  year = " [0-9]{4}$" # note the empty space at the front
+)
+
+rgx_pub_ref_classic <-
+  purrr::flatten_chr(rgx[c("author", "et_al", "year")]) %>%
+  stringr::str_c(collapse = "") %>%
+  stringr::str_c("^", .)
+
+rgx_pub_ref_double <-
+  stringr::str_c(rgx$author, " & ", rgx$author, rgx$year)
+
+rgx_pub_ref_final <- stringr::str_c("(", rgx_pub_ref_classic, "|", rgx_pub_ref_double, ")")
 
 required_vars_list <-
   purrr::map(
@@ -1288,7 +1411,7 @@ shiny_tissue_portion_regex <- function(pattern = "[0-9]$"){
 
   stringr::str_c(
     "inp_",
-    c("storage_mode", "storage_size", "preparateur_tissue"),
+    get_info_vars(d_level = "tissue_portion"),
     "_",
     pattern,
     "$"
@@ -1298,26 +1421,42 @@ shiny_tissue_portion_regex <- function(pattern = "[0-9]$"){
 }
 
 
+# v -----------------------------------------------------------------------
 
-
-# below -------------------------------------------------------------------
-
-data_vars <-
-  purrr::flatten_chr(
-    purrr::map(
-      .x = data_tables,
-      .f = base::names
+valid_pub_ref_formats <-
+  c(
+    "Smith et al. 2000",
+    "Smith, S. et al. 2000",
+    "Smith & Miller 2000",
+    "Smith, S. & Miller, M. 2000"
     )
+
+
+
+
+# below due to dependencies -----------------------------------------------
+
+# depends on data_levels
+computed_vars_list <-
+  purrr::map(
+    .x = data_levels,
+    .f = function(dl){
+
+      purrr::keep(.x = data_variables, .p = ~ .x$d_level == dl & .x$type == "computed") %>%
+        base::names()
+
+    }
   ) %>%
-  base::unique() %>%
-  confuns::vselect(
-    id_raw_data_num,
-    id_tissue_portion_num,
-    id_tissue_sample_num,
-    id_tissue_donor_num,
+  purrr::set_names(data_levels)
+
+# depends on id_vars_list within get_id_vars
+data_vars <-
+  c(
+    "id_raw_data_num",
+    "id_tissue_portion_num",
+    "id_tissue_sample_num",
+    "id_tissue_donor_num",
     dplyr::all_of(get_id_vars(d_level = "raw_data")),
-    dplyr::all_of(get_info_vars(d_level = "raw_data", level_spec = F))
+    dplyr::all_of(get_info_vars(d_level = "raw_data", level_spec = FALSE))
   )
-
-
 

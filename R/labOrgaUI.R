@@ -11,7 +11,7 @@ launchLabOrgaUI <- function(){
       #shinydashboard::sidebarMenuOutput(outputId = "menu"),
       shinydashboard::sidebarMenu(
         id = "menu",
-        shinydashboard::menuItem(text = "Actions", tabName = "tab_actions"),
+        #shinydashboard::menuItem(text = "Actions", tabName = "tab_actions"),
         shinydashboard::menuItem(
           text = "Tables",
           tabName = "tab_tables",
@@ -25,8 +25,8 @@ launchLabOrgaUI <- function(){
             )
           )
         ),
-        shinydashboard::menuItem( text = "Projects",  tabName = "tab_projects"),
-        shiny::actionButton("test", label = "Test")
+        shinydashboard::menuItem( text = "Projects",  tabName = "tab_projects")#,
+        #shiny::actionButton("test", label = "Test")
       )
     ),
 
@@ -194,7 +194,7 @@ launchLabOrgaUI <- function(){
                         choices = c("assay_trademark", "histo_class", "organ", "organ_part",
                                     "workgroup", "institution"
                                     ),
-                        selected = c("organ", "histo_class", "assay_trademark"),
+                        selected = c("assay_trademark"),
                         multiple = TRUE
                       )
                     ),

@@ -150,7 +150,7 @@ htmlAddTissuePortion <- function(df, nth){
       width = 6,
       htmlHeadlineReqInput(d_level = "tissue_portion"),
       data_variables$storage_mode$shiny_input(pref = "inp", nth = nth),
-      data_variables$date_of_creation$shiny_input(pref = "inp", nth = nth)
+      data_variables$date_of_creation$shiny_input(pref = "inp", selected = "1900-01-01", nth = nth)
     )
   )
 
@@ -192,17 +192,17 @@ htmlAddTissuePortion <- function(df, nth){
 
 
 htmlAddTissueSample <- function(df){
-  print("test id")
+
   # id vars
   html_id_input <-
     shiny::tagList(
       htmlCol(
         width = 4,
         htmlHeadlineIdInput(d_level = "tissue_sample"),
-        data_variables$date_of_extraction$shiny_input(pref = "inp")
+        data_variables$date_of_extraction$shiny_input(pref = "inp", selected = "1900-01-01")
       )
     )
-  print("test req")
+
   # req vars
   html_req_input <-
     shiny::tagList(
@@ -221,7 +221,7 @@ htmlAddTissueSample <- function(df){
         )
       )
     )
-  print("test opt")
+
   # opt vars
   html_opt_input <-
     shiny::tagList(
@@ -334,7 +334,8 @@ htmlDetermineNumberOfTissuePortions <- function(){
         label = "Number of tissue portions:",
         value = 0,
         min = 1,
-        step = 1
+        step = 1,
+        max = 5
       ),
       shiny::helpText(
         "After specifying the number of portions you are prompted to enter
@@ -448,7 +449,7 @@ htmlFilterOptions <- function(df, suff = NULL){
 
           } else if(dvar$class %in% c("date", "numeric")){
 
-            r <- base::range(df[[dvar$name]])
+            r <- base::range(df[[dvar$name]], na.rm = TRUE)
 
             if(dvar$name %in% c("pub_year")){
 
@@ -537,8 +538,9 @@ htmlFilterOptions <- function(df, suff = NULL){
             width = 12,
             htmlH3(stringr::str_c("Level: ", dlp(dl, cap = TRUE))),
             html
+            )
           )
-        )
+
       }
     ) %>%
     purrr::flatten()
@@ -563,6 +565,23 @@ htmlFooterForAddModals <- function(d_level){
     htmlCol(
       width = 5,
       htmlMediumButton(inputId = inputId, label = label)
+    ),
+    htmlCol(
+      width = 5,
+      htmlButtonCloseModal()
+    ),
+    htmlCol(width = 1)
+  )
+
+}
+
+htmlFooterForDeletion <- function(d_level){
+
+  shiny::fluidRow(
+    htmlCol(width = 1),
+    htmlCol(
+      width = 5,
+      htmlMediumButton(inputId = stringr::str_c("delete_", d_level, "_confirm"), label = "Delete!", color = "danger")
     ),
     htmlCol(
       width = 5,
@@ -947,7 +966,6 @@ htmlModalAddTissueSample <- function(selected_id, df){
 }
 
 
-
 htmlModalAdjustments <- function(){
 
   shiny::tagList(
@@ -963,6 +981,72 @@ htmlModalAdjustments <- function(){
   )
 
 }
+
+htmlModalDeleteEntry <- function(d_level, id){
+
+  if(dln(d_level) != 4){
+
+    dependent_d_levels <-
+      data_levels[(dln(d_level)+1):4] %>%
+      dlp() %>%
+      stringr::str_c(., " entries ") %>%
+      confuns::scollapse(sep = ", ", last = " and ")
+
+    text <- glue::glue("Deleting this entry will delete all dependent {dependent_d_levels}, too. This can not be undone.")
+
+  } else {
+
+    text <- "This can not be undone."
+
+  }
+
+
+
+  shiny::showModal(
+    ui = shiny::modalDialog(
+      size = "xl",
+      title = glue::glue("Really delete {dlp(d_level)} '{id}'?"),
+      footer = htmlFooterForDeletion(d_level = d_level),
+      shiny::helpText(text)
+    )
+  )
+
+}
+
+
+
+htmlModalEditTissueDonor <- function(df, selected_id){
+
+  tissue_donor <- dplyr::filter(df, id_tissue_donor_num == {{selected_id}})
+
+  shiny::showModal(
+    ui = shiny::modalDialog(
+      title = stringr::str_c("Edit tissue donor: ", selected_id),
+      size = "xl",
+      footer = htmlFooterForEditModals(d_level = "tissue_donor"),
+      htmlContainer(
+        htmlOrganizeInRows(
+          shiny::tagList(
+            shiny::dateInput(
+              inputId = "ed_date_of_birth",
+              label = "Date of birth:",
+              value = tissue_donor$date_of_birth
+            ),
+            shiny::selectInput(
+              inputId = "ed_sex",
+              label = "Sex:",
+              choices = c("unknown", "female", "male"),
+              selected = tissue_donor$sex
+            )
+          ),
+          ncol = 3
+        )
+      )
+    )
+  )
+
+}
+
 
 htmlModalHowToProceed <- function(d_level, # the current data level
                                   selected_id = NULL,
@@ -1007,48 +1091,20 @@ htmlModalHowToProceed <- function(d_level, # the current data level
 
   }
 
+  title <-
+    glue::glue("You have added {dlp(d_level)} '{selected_id}'! What now?") %>%
+    base::as.character()
+
   shiny::showModal(
     ui = shiny::modalDialog(
-      title = "What now?",
+      title = title,
       footer = htmlFooterForNextLevelModal(d_level, move_ahead_button),
       size = "xl",
       shiny::helpText(
         glue::glue(
           "If you want to continue to make {dlp(d_level)} entries{text1}, click on 'Continue'.",
           " {text2}",
-          " Else click on 'Go back' to return to the menu."
-        )
-      )
-    )
-  )
-
-}
-
-htmlModalEditTissueDonor <- function(df, selected_id){
-
-  tissue_donor <- dplyr::filter(df, id_tissue_donor_num == {{selected_id}})
-
-  shiny::showModal(
-    ui = shiny::modalDialog(
-      title = stringr::str_c("Edit tissue donor: ", selected_id),
-      size = "xl",
-      footer = htmlFooterForEditModals(d_level = "tissue_donor"),
-      htmlContainer(
-        htmlOrganizeInRows(
-          shiny::tagList(
-            shiny::dateInput(
-              inputId = "ed_date_of_birth",
-              label = "Date of birth:",
-              value = tissue_donor$date_of_birth
-            ),
-            shiny::selectInput(
-              inputId = "ed_sex",
-              label = "Sex:",
-              choices = c("unknown", "female", "male"),
-              selected = tissue_donor$sex
-            )
-          ),
-          ncol = 3
+          " Else click on 'Close' to return to the menu."
         )
       )
     )
@@ -1211,7 +1267,7 @@ htmlOrganizeInRows <- function(tag_list, ncol = 3, breaks = 1){
 
 # P -----------------------------------------------------------------------
 
-htmlPopify <- function(el, var, descr = TRUE, placement = "right", ...){
+htmlPopify <- function(el, var = NULL, descr = TRUE, placement = "right", ...){
 
   if(base::isTRUE(descr)){
 
@@ -1220,6 +1276,17 @@ htmlPopify <- function(el, var, descr = TRUE, placement = "right", ...){
         el = el,
         title = "",
         content = data_variables[[var]][["description"]],
+        placement = placement,
+        ...
+      )
+
+  } else if(base::is.character(descr)){
+
+    out <-
+      shinyBS::popify(
+        el = el,
+        title = "",
+        content = descr,
         placement = placement,
         ...
       )
@@ -1249,7 +1316,7 @@ htmlSelectEntryBody <- function(d_level_select, d_level_goal = NULL, action = "a
 
   if(action == "add"){
 
-    first_text <- glue::glue("To add a new {dlg_p} the {dls_p} of origin must be specified.")
+    first_text <- glue::glue("To add a new {dlg_p} it's {dls_p} must be specified first.")
 
   } else if(action == "edit"){
 
@@ -1267,7 +1334,7 @@ htmlSelectEntryBody <- function(d_level_select, d_level_goal = NULL, action = "a
             "{first_text}",
             " Use the search on the right to enter catchphrases or the respective ID to filter the table.",
             " Then select the {dls_p} of interest by clicking on it such that the row turns blue and click on 'Continue'.",
-            " If you can't find the {dlg_p} among the data return to the menu and add it first."
+            " If you can't find the {dls_p} among the data return to the menu and add it first."
           )
         )
       )

@@ -22,12 +22,17 @@ launchLabOrgaServer <- function(input, output, session){
 
   active_d_level <- shiny::reactiveVal(value = "")
 
-  df_tissue_donor <- shiny::reactiveVal(value = get_storage_df("tissue_donor", complete = FALSE))
-  df_tissue_sample <- shiny::reactiveVal(value = get_storage_df("tissue_sample", complete = FALSE))
-  df_tissue_portion <- shiny::reactiveVal(value = get_storage_df("tissue_portion", complete = FALSE))
-  df_raw_data <- shiny::reactiveVal(value = get_storage_df("raw_data", complete = FALSE))
+  df_tissue_donor <- shiny::reactiveVal(value = load_storage_df("tissue_donor"))
+  df_tissue_sample <- shiny::reactiveVal(value = load_storage_df("tissue_sample"))
+  df_tissue_portion <- shiny::reactiveVal(value = load_storage_df("tissue_portion"))
+  df_raw_data <- shiny::reactiveVal(value = load_storage_df("raw_data"))
 
   project_ids <- shiny::reactiveVal(value = "")
+
+  selected_tissue_donor <- shiny::reactiveVal(value = "")
+  selected_tissue_sample <- shiny::reactiveVal(value = "")
+  selected_tissue_portion <- shiny::reactiveVal(value = "")
+  selected_raw_data <- shiny::reactiveVal(value = "")
 
 # render UI ---------------------------------------------------------------
 
@@ -68,7 +73,8 @@ launchLabOrgaServer <- function(input, output, session){
       inputId = "folder_orga_sorted",
       label = "In order:",
       items = input$folder_orga_select,
-      item_class = "default"
+      item_class = "default",
+      placeholder = "No sub folders chosen."
     )
 
   })
@@ -285,7 +291,7 @@ launchLabOrgaServer <- function(input, output, session){
       shiny::reactiveValuesToList(input) %>%
       confuns::lselect(lst = ., dplyr::matches(shiny_tissue_portion_regex()))
 
-    # creates a list of lists where each sub list is equal in it structure to the other
+    # creates a list of lists where each sub list is equal in its structure to the other
     # data level input lists.
     purrr::map(
       .x = 1:input$n_tissue_portions,
@@ -331,10 +337,6 @@ launchLabOrgaServer <- function(input, output, session){
 
   })
 
-  selected_tissue_donor <- shiny::reactiveVal(value = "")
-  selected_tissue_sample <- shiny::reactiveVal(value = "")
-  selected_tissue_portion <- shiny::reactiveVal(value = "")
-  selected_raw_data <- shiny::reactiveVal(value = "")
 
 # eventReactives ----------------------------------------------------------
 
@@ -501,6 +503,106 @@ launchLabOrgaServer <- function(input, output, session){
 
 # observe events ----------------------------------------------------------
 
+  # delete tissue donor
+  oe <- shiny::observeEvent(input$delete_tissue_donor_bt, {
+
+    checkpoint(
+      evaluate = !purrr::is_empty(selected_tissue_donor()),
+      case_false = "no_entry_selected"
+    )
+
+    htmlModalDeleteEntry(
+      d_level = "tissue_donor",
+      id = selected_tissue_donor()
+    )
+
+  })
+
+  oe <- shiny::observeEvent(input$delete_tissue_donor_confirm, {
+
+    delete_entries(id = selected_tissue_donor(), in_shiny = TRUE)
+
+    df_tissue_donor(load_storage_df("tissue_donor"))
+    df_tissue_sample(load_storage_df("tissue_sample"))
+    df_tissue_portion(load_storage_df("tissue_portion"))
+    df_raw_data(load_storage_df("raw_data"))
+
+  })
+
+  # delete tissue sample
+  oe <- shiny::observeEvent(input$delete_tissue_sample_bt, {
+
+    checkpoint(
+      evaluate = !purrr::is_empty(selected_tissue_sample()),
+      case_false = "no_entry_selected"
+    )
+
+    htmlModalDeleteEntry(
+      d_level = "tissue_sample",
+      id = selected_tissue_sample()
+    )
+
+  })
+
+  oe <- shiny::observeEvent(input$delete_tissue_sample_confirm, {
+
+    delete_entries(id = selected_tissue_sample(), in_shiny = TRUE)
+
+    df_tissue_sample(load_storage_df("tissue_sample"))
+    df_tissue_portion(load_storage_df("tissue_portion"))
+    df_raw_data(load_storage_df("raw_data"))
+
+  })
+
+  # delete tissue portion
+  oe <- shiny::observeEvent(input$delete_tissue_portion_bt, {
+
+    checkpoint(
+      evaluate = !purrr::is_empty(selected_tissue_portion()),
+      case_false = "no_entry_selected"
+    )
+
+    htmlModalDeleteEntry(
+      d_level = "tissue_portion",
+      id = selected_tissue_portion()
+    )
+
+  })
+
+  oe <- shiny::observeEvent(input$delete_tissue_portion_confirm, {
+
+    delete_entries(id = selected_tissue_portion(), in_shiny = TRUE)
+
+    df_tissue_portion(load_storage_df("tissue_portion"))
+    df_raw_data(load_storage_df("raw_data"))
+
+  })
+
+  # delete raw data
+  oe <- shiny::observeEvent(input$delete_raw_data_bt, {
+
+    checkpoint(
+      evaluate = !purrr::is_empty(selected_raw_data()),
+      case_false = "no_entry_selected"
+    )
+
+    htmlModalDeleteEntry(
+      d_level = "raw_data",
+      id = selected_raw_data()
+    )
+
+  })
+
+  oe <- shiny::observeEvent(input$delete_raw_data_confirm, {
+
+    delete_entries(id = selected_raw_data(), in_shiny = TRUE)
+
+    df_raw_data(load_storage_df("raw_data"))
+
+  })
+
+
+
   oe <- shiny::observeEvent(c(input$add_tissue_donor, input$add_tissue_donor_bt), {
 
     # nothing of origin must be selected as tissue donor is first data level
@@ -625,14 +727,15 @@ launchLabOrgaServer <- function(input, output, session){
 
     old_ids <- df_tissue_sample()[["id_tissue_sample_num"]]
 
-    out <- make_entry(
-      df = df_tissue_sample(),
-      input_id_vars = input_tissue_sample()$id,
-      input_info_vars = input_tissue_sample()$info,
-      prev_id_merged = selected_tissue_donor(),
-      save = save_tables, # overwrites the data file on the harddrive
-      in_shiny = TRUE
-    )
+    out <-
+      make_entry(
+        df = df_tissue_sample(),
+        input_id_vars = input_tissue_sample()$id,
+        input_info_vars = input_tissue_sample()$info,
+        prev_id_merged = selected_tissue_donor(),
+        save = save_tables, # overwrites the data file on the harddrive
+        in_shiny = TRUE
+      )
 
     new_ids <- out[["id_tissue_sample_num"]]
 
@@ -648,22 +751,81 @@ launchLabOrgaServer <- function(input, output, session){
 
   }, ignoreInit = TRUE)
 
+
+  #
+  oe <- shiny::observeEvent(input$date_of_creation_today_1, {
+
+    shiny::updateDateInput(
+      inputId = "inp_date_of_creation_1",
+      label = "Date of Creation:",
+      value = base::Sys.Date()
+    )
+
+  })
+
+  oe <- shiny::observeEvent(input$date_of_creation_today_2, {
+
+    shiny::updateDateInput(
+      inputId = "inp_date_of_creation_2",
+      label = "Date of Creation:",
+      value = base::Sys.Date()
+    )
+
+  })
+
+  oe <- shiny::observeEvent(input$date_of_creation_today_3, {
+
+    shiny::updateDateInput(
+      inputId = "inp_date_of_creation_3",
+      label = "Date of Creation:",
+      value = base::Sys.Date()
+    )
+
+  })
+
+  oe <- shiny::observeEvent(input$date_of_creation_today_4, {
+
+    shiny::updateDateInput(
+      inputId = "inp_date_of_creation_4",
+      label = "Date of Creation:",
+      value = base::Sys.Date()
+    )
+
+  })
+
+  oe <- shiny::observeEvent(input$date_of_creation_today_5, {
+
+    shiny::updateDateInput(
+      inputId = "inp_date_of_creation_5",
+      label = "Date of Creation:",
+      value = base::Sys.Date()
+    )
+
+  })
+
+
   oe <- shiny::observeEvent(input$make_entry_tissue_portion, {
 
     active_d_level("tissue_portion")
+
+    check_input_req_vars_tissue_portion(
+      input_tissue_portion = input_tissue_portion(),
+      in_shiny = TRUE
+    )
 
     for(i in base::seq_along(input_tissue_portion())){
 
       old_ids <- df_tissue_portion()[["id_tissue_portion_num"]]
 
-      out <- make_entry(
-        df = df_tissue_portion(),
-        input_id_vars = input_tissue_portion()[[i]]$id,
-        input_info_vars = input_tissue_portion()[[i]]$info,
-        prev_id_merged = selected_tissue_sample(),
-        save = save_tables, # overwrites the data file on the harddrive
-        in_shiny = TRUE
-      )
+      out <-
+        make_entry(
+          df = df_tissue_portion(),
+          input_id_vars = input_tissue_portion()[[i]]$id,
+          input_info_vars = input_tissue_portion()[[i]]$info,
+          prev_id_merged = selected_tissue_sample(),
+          save = save_tables, # overwrites the data file on the harddrive
+          in_shiny = TRUE
+        )
 
       new_ids <- out[["id_tissue_portion_num"]]
 
@@ -779,12 +941,16 @@ launchLabOrgaServer <- function(input, output, session){
           htmlOrganizeInRows(
             shiny::tagList(
               purrr::map(
-                .x = purrr::discard(.x = data_variables[get_info_vars("tissue_donor")], .p = base::is.null),
-                .f = ~ .x$shiny_input(
-                  pref = "ed",
-                  selected = entry[[.x$name]],
-                  choices = process_choices(x = df_tissue_donor()[[.x$name]], action = "edit")
-                ) %>% htmlCol(width = 4)
+                .x = purrr::discard(
+                  .x = data_variables[get_info_vars("tissue_donor")],
+                  .p = ~ base::is.null(.x$shiny_input)
+                  ),
+                .f = ~
+                  .x$shiny_input(
+                    pref = "ed",
+                    selected = entry[[.x$name]],
+                    choices = process_choices(x = df_tissue_donor()[[.x$name]], action = "edit")
+                  ) %>% htmlCol(width = 4)
               )
             ),
             ncol = 3
@@ -821,11 +987,12 @@ launchLabOrgaServer <- function(input, output, session){
                   .x = data_variables[get_info_vars("tissue_sample")],
                   .p = ~ base::is.null(.x$shiny_input)
                   ),
-                .f = ~ .x$shiny_input(
-                  pref = "ed",
-                  selected = entry[[.x$name]],
-                  choices = process_choices(x = df_tissue_sample()[[.x$name]], action = "edit")
-                )
+                .f = ~
+                  .x$shiny_input(
+                    pref = "ed",
+                    selected = entry[[.x$name]],
+                    choices = process_choices(x = df_tissue_sample()[[.x$name]], action = "edit")
+                  )
               )
             ),
             ncol = 3
@@ -862,12 +1029,13 @@ launchLabOrgaServer <- function(input, output, session){
                   .x = data_variables[get_info_vars("tissue_portion")],
                   .p = ~ base::is.null(.x$shiny_input)
                   ),
-                .f = ~ .x$shiny_input(
-                  pref = "ed",
-                  nth = NULL,
-                  selected = entry[[.x$name]],
-                  choices = process_choices(x = df_tissue_portion()[[.x$name]], action = "edit")
-                )
+                .f = ~
+                  .x$shiny_input(
+                    pref = "ed",
+                    nth = NULL,
+                    selected = entry[[.x$name]],
+                    choices = process_choices(x = df_tissue_portion()[[.x$name]], action = "edit")
+                  )
               )
             ),
             ncol = 3
@@ -905,11 +1073,12 @@ launchLabOrgaServer <- function(input, output, session){
                   .x = data_variables[get_info_vars("raw_data")],
                   .p = ~ base::is.null(.x$shiny_input)
                   ),
-                .f = ~ .x$shiny_input(
-                  pref = "ed",
-                  selected = entry[[.x$name]],
-                  choices = process_choices(x = df_raw_data()[[.x$name]], action = "edit")
-                )
+                .f = ~
+                  .x$shiny_input(
+                    pref = "ed",
+                    selected = entry[[.x$name]],
+                    choices = process_choices(x = df_raw_data()[[.x$name]], action = "edit")
+                  )
               )
             ),
             ncol = 3
@@ -1212,6 +1381,7 @@ launchLabOrgaServer <- function(input, output, session){
 
     # prepare the folder and sub folders
     prepare_folder_for_download(
+      df_prep = df_prep,
       project_dir = project_dir(),
       folder_organization = folder_organization()
     )
@@ -1252,15 +1422,22 @@ launchLabOrgaServer <- function(input, output, session){
 
   })
 
+  oe <- shiny::observeEvent(input$date_of_extraction_today, {
+
+    shiny::updateDateInput(
+      inputId = "inp_date_of_extraction",
+      label = "Date of Extraction:",
+      value = base::Sys.Date()
+    )
+
+  })
+
 
   ### tester
   oe <- shiny::observeEvent(input$test, {
 
     print("test")
 
-    print(folder_organization())
-    print(project_dir())
-    print(project_ids())
 
   })
 
