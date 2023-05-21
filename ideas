@@ -1,0 +1,27 @@
+
+write functions:
+
+1. configureLabOrga()
+
+( ~ ProgrammData) might change depending on output of Sys.env() of different systems
+
+- 1. concatenate directory string ~ ProgrammData/LabOrga : getLabOrgaDirectory()
+- 2. create directory ~ ProgrammData/LabOrga : createLabOrgaDirectory()
+- 3. create directory ~ ProgrammData/LabOrga/storage : createLabOrgaStorageDirectory()
+- 4. write 4 tables via write_empty_storage_df()
+ - ~ ProgrammData/LabOrga/storage/tissue_donor_table.RDS
+ - ~ ProgrammData/LabOrga/storage/tissue_sample_table.RDS
+ - ~ ProgrammData/LabOrga/storage/tissue_portion_table.RDS
+ - ~ ProgrammData/LabOrga/storage/raw_data_table.RDS
+- 5. create file ~ ProgrammData/LabOrga/configuration.RDS a list with information about the configuration
+
+
+
+
+2. getLaborgaDirectory()
+
+3. getLaborgaStorageDirectory()
+
+- 1. checks if configuration has been done
+- 2. if not, asks to run cofigureLabOrga()
+- 3. if configured, returns directory.

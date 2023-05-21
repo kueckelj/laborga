@@ -2,7 +2,7 @@
 % Please edit documentation in R/fns-config.R
 \name{setStorageDirectory}
 \alias{setStorageDirectory}
-\title{Set \code{laborga} storage directory}
+\title{Set \code{laborga} storage directory --- probably not needed}
 \usage{
 setStorageDirectory(dir, verbose = TRUE)
 }

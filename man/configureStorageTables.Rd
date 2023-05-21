@@ -20,7 +20,7 @@ An invisible \code{TRUE} if configuration was succesfull. An invisible \code{FAL
 }
 \description{
 This function configures the four tables in which
-the information is stored. I requires prior configuration of the
+the information is stored. It requires prior configuration of the
 storage directory via \code{configureStorageDirectory()}.
 }
 \details{
@@ -31,6 +31,6 @@ in the configured storage directory.
 \item \emph{<storage_dir>/tissue_donor_storage_df.RDS}
 \item \emph{<storage_dir>/tissue_sample_storage_df.RDS}
 \item \emph{<storage_dir>/tissue_portion_storage_df.RDS}
-\item \emph{<storage_df>/raw_data_storage_df.RDS}
+\item \emph{<storage_dir>/raw_data_storage_df.RDS}
 }
 }

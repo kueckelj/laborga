@@ -10,8 +10,12 @@ launchLabOrgaUI <- function(){
       collapsed = FALSE,
       #shinydashboard::sidebarMenuOutput(outputId = "menu"),
       shinydashboard::sidebarMenu(
-        id = "menu",
-        #shinydashboard::menuItem(text = "Actions", tabName = "tab_actions"),
+        id = "sidebar",
+        shinydashboard::menuItem(
+          text = "Overview",
+          tabName = "tab_overview",
+          selected = TRUE
+        ),
         shinydashboard::menuItem(
           text = "Tables",
           tabName = "tab_tables",
@@ -25,8 +29,13 @@ launchLabOrgaUI <- function(){
             )
           )
         ),
-        shinydashboard::menuItem( text = "Projects",  tabName = "tab_projects")#,
-        #shiny::actionButton("test", label = "Test")
+        shinydashboard::menuItem(text = "Projects",  tabName = "tab_projects"),#,
+        shiny::actionButton("test", label = "Test"),
+        shiny::column(
+          width = 12,
+          align = "left",
+          shiny::actionButton(inputId = "logout", label = "Logout", width = "85%")
+        )
       )
     ),
 
@@ -43,6 +52,16 @@ launchLabOrgaUI <- function(){
       ),
 
       shinydashboard::tabItems(
+
+        shinydashboard::tabItem(
+          tabName = "tab_overview",
+          shiny::fluidRow(
+            htmlCol(
+              width = 12,
+              shiny::tags$h1("Overview")
+              )
+          )
+        ),
 
         shinydashboard::tabItem(
           tabName = "tab_actions",

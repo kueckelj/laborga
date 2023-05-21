@@ -797,6 +797,28 @@ htmlHelperDD <- function(shiny_tag, content, ...){
 }
 
 
+# I -----------------------------------------------------------------------
+
+htmlInvalidPW <- function(test){
+
+  if(base::isTRUE(test)){
+
+    html <-
+      shiny::column(
+        width = 10,
+        align = "center",
+        shiny::tags$h5("Wrong password.", style = "color: red")
+      )
+
+  } else {
+
+    html <- NULL
+
+  }
+
+  return(html)
+
+}
 
 # M -----------------------------------------------------------------------
 
@@ -893,7 +915,6 @@ htmlMediumButton <- function(inputId, label, color = "success", nb = 1, text = N
 
 }
 
-
 htmlModalAddRawData <- function(selected_id, df){
 
   shiny::showModal(
@@ -920,7 +941,6 @@ htmlModalAddTissueDonor <- function(df){
   )
 
 }
-
 
 htmlModalAddTissuePortion <- function(selected_id, df, n_portions){
 
@@ -964,7 +984,6 @@ htmlModalAddTissueSample <- function(selected_id, df){
   )
 
 }
-
 
 htmlModalAdjustments <- function(){
 
@@ -1013,8 +1032,6 @@ htmlModalDeleteEntry <- function(d_level, id){
 
 }
 
-
-
 htmlModalEditTissueDonor <- function(df, selected_id){
 
   tissue_donor <- dplyr::filter(df, id_tissue_donor_num == {{selected_id}})
@@ -1046,7 +1063,6 @@ htmlModalEditTissueDonor <- function(df, selected_id){
   )
 
 }
-
 
 htmlModalHowToProceed <- function(d_level, # the current data level
                                   selected_id = NULL,
@@ -1107,6 +1123,80 @@ htmlModalHowToProceed <- function(d_level, # the current data level
           " Else click on 'Close' to return to the menu."
         )
       )
+    )
+  )
+
+}
+
+htmlModalLogIn <- function(users_df){
+
+  shiny::showModal(
+    ui = shiny::modalDialog(
+      title = shiny::tags$h2(shiny::strong("Please log in"), style = "padding-top: 0;"),
+      footer =
+        shiny::fluidRow(
+          htmlCol(width = 1, align = "center"),
+          htmlCol(width = 5, align = "center", shiny::actionButton(inputId = "login", label = "Login", width = "100%")),
+          htmlCol(width = 5, align = "center", shiny::actionButton(inputId = "create_new_user", label = "New User", width = "100%")),
+          htmlCol(width = 1, align = "center")
+        ),
+      easyClose = FALSE,
+      size = "xl",
+      shinyjs::hidden(
+        shiny::div(
+          id = "login_panel",
+          style = "width: 500px; max-width: 100%; margin: 0 auto; padding: 20px;",
+            htmlContainer(
+              width = 12,
+              align = "left",
+              shinyWidgets::pickerInput(
+                inputId = "username",
+                label = shiny::tagList(shiny::icon("user"), "User Name:"),
+                options = shinyWidgets::pickerOptions(
+                  title = "Username",
+                  liveSearch = TRUE
+                ),
+                choices = users_df[["username"]],
+                width = "100%"
+              ),
+              shiny::passwordInput(
+                inputId = "password",
+                label = shiny::tagList(shiny::icon("unlock-alt"), "Password:"),
+                placeholder = "Password",
+                width = "100%"
+              )
+            )
+        )
+      )
+    )
+  )
+
+}
+
+htmlModalNewUser <- function(){
+
+  shiny::showModal(
+    ui = shiny::modalDialog(
+      title = "Create new user profile",
+      footer = shiny::fluidRow(
+        shiny::fluidRow(
+          htmlCol(width = 1),
+          htmlCol(
+            width = 4,
+            htmlMediumButton(inputId = "add_new_user", label = "Add User")
+          ),
+          htmlCol(width = 2),
+          htmlCol(
+            width = 4,
+            htmlMediumButton(inputId = "back_to_login", label = "Close")
+          ),
+          htmlCol(width = 1)
+        )
+      ),
+      shiny::helpText("To create a new user profile enter your name and you password."),
+      shiny::textInput(inputId = "new_username", label = NULL, placeholder = "Username"),
+      shiny::passwordInput(inputId = "new_password1", label = NULL, placeholder = "Password"),
+      shiny::passwordInput(inputId = "new_password2", label = NULL, placeholder = "Repeat Password")
     )
   )
 
@@ -1406,3 +1496,7 @@ htmlTextInput <- function(variable, ncol){
   )
 
 }
+
+
+
+# U -----------------------------------------------------------------------

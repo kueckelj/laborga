@@ -896,6 +896,16 @@ dt_options <-
     )
 
 
+
+# e -----------------------------------------------------------------------
+
+empty_users_df <-
+  tibble::tibble(
+    username = character(),
+    password = character(),
+    permissions = factor(levels = c("admin", "standard"))
+  )
+
 # f -----------------------------------------------------------------------
 
 first_name <- ", [A-Z]*\\." # only in combination with last name (adds ', ' to last name)

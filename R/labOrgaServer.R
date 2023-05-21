@@ -3,6 +3,9 @@
 launchLabOrgaServer <- function(input, output, session){
 
 
+# login -------------------------------------------------------------------
+
+
 
 # ui matches --------------------------------------------------------------
 
@@ -27,12 +30,18 @@ launchLabOrgaServer <- function(input, output, session){
   df_tissue_portion <- shiny::reactiveVal(value = load_storage_df("tissue_portion"))
   df_raw_data <- shiny::reactiveVal(value = load_storage_df("raw_data"))
 
+  invalid_password <- shiny::reactiveVal(value = FALSE)
+
   project_ids <- shiny::reactiveVal(value = "")
 
   selected_tissue_donor <- shiny::reactiveVal(value = "")
   selected_tissue_sample <- shiny::reactiveVal(value = "")
   selected_tissue_portion <- shiny::reactiveVal(value = "")
   selected_raw_data <- shiny::reactiveVal(value = "")
+
+  user <- shiny::reactiveVal(value = NULL)
+  users_df <- shiny::reactiveVal(value = load_users_df())
+
 
 # render UI ---------------------------------------------------------------
 
@@ -154,7 +163,6 @@ launchLabOrgaServer <- function(input, output, session){
     )
 
   })
-
 
 
 
@@ -324,6 +332,8 @@ launchLabOrgaServer <- function(input, output, session){
     )
 
   })
+
+  logged_in <- shiny::reactive({ !base::is.null(user()) })
 
   prel_dir <- shiny::reactive({
 
@@ -1432,12 +1442,113 @@ launchLabOrgaServer <- function(input, output, session){
 
   })
 
+  oe <- shiny::observeEvent(input$login, {
+
+    checkpoint(
+      evaluate = input$username %in% users_df()[["username"]],
+      case_false = "username_unknown"
+    )
+
+    user_df_filtered <- dplyr::filter(users_df(), username == input$username)
+
+    if(sodium::password_verify(hash = user_df_filtered[["password"]], password = input$password)){
+
+      invalid_password(FALSE)
+
+      user(user_df_filtered)
+
+      shiny::removeModal()
+
+    } else {
+
+      confuns::give_feedback(
+        msg = "Password and username do not match.",
+        fdb.fn = "stop",
+        with.time = FALSE,
+        in.shiny = TRUE
+      )
+
+    }
+
+  })
+
+  oe <- shiny::observeEvent(input$create_new_user, {
+
+    shiny::removeModal()
+
+    htmlModalNewUser()
+
+  })
+
+  oe <- shiny::observeEvent(input$add_new_user, {
+
+    checkpoint(
+      evaluate = check_username(input$new_username),
+      case_false = "invalid_username"
+    )
+
+    checkpoint(
+      evaluate = !input$new_username %in% users_df()[["username"]],
+      case_false = "username_taken"
+    )
+
+    checkpoint(
+      evaluate = input$new_password1 == input$new_password2,
+      case_false = "non_matching_passwords"
+      )
+
+    checkpoint(
+      evaluate = check_password(input$new_password1),
+      case_false = "invalid_password"
+    )
+
+    new_credentials <-
+      list(
+        username = input$new_username,
+        password = sodium::password_store(input$new_password1),
+        permissions = base::factor("standard")
+      )
+
+    new_users_df <- dplyr::add_row(.data = users_df(), !!!new_credentials)
+
+    # save users data.frame on device
+    save_users_df(df = new_users_df)
+
+    # update reactive value
+    users_df(new_users_df)
+
+    confuns::give_feedback(
+      msg = "New user successfully added.",
+      verbose = TRUE,
+      in.shiny = TRUE,
+      with.time = FALSE
+    )
+
+  })
+
+  oe <- shiny::observeEvent(input$back_to_login, {
+
+    shiny::removeModal()
+
+    htmlModalLogIn(users_df = users_df())
+
+  })
+
+  oe <- shiny::observeEvent(input$logout, {
+
+    user(NULL)
+
+    htmlModalLogIn(users_df = users_df())
+
+  })
+
 
   ### tester
   oe <- shiny::observeEvent(input$test, {
 
-    print("test")
+    print(1)
 
+    shinydashboard::updateTabItems(session, inputId = "sidebar", selected = "tab_projects")
 
   })
 
@@ -1566,5 +1677,13 @@ launchLabOrgaServer <- function(input, output, session){
     project_dir()
 
   })
+
+  # start app with login modal
+  shiny::observeEvent(input$nothing, {
+
+    htmlModalLogIn(users_df = users_df())
+
+  }, ignoreInit = FALSE, ignoreNULL = FALSE)
+
 
 }

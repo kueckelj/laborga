@@ -1,5 +1,41 @@
 
 
+# a -----------------------------------------------------------------------
+
+#' @title Obtain configured storage directory
+#'
+#' @description Retrieves the directory to folder ~/ProgramData and assembles
+#' the required `laborga` directories.
+#'
+#' @return Character value.
+#'
+#' @export
+assembleLabOrgaDir <- function(){
+
+  if(base::Sys.info()["sysname"] == "Windows"){
+
+    standard_dir <- base::Sys.getenv(x = "ProgramData")
+
+  } else {
+
+    standard_dir <- base::Sys.getenv(x = "ProgramData")
+
+  }
+
+  out <- stringr::str_c(standard_dir, "/", "LabOrga")
+
+  return(out)
+
+}
+
+#' @rdname assembleLabOrgaDir
+#' @export
+assembleLabOrgaStorageDir <- function(){
+
+  assembleLabOrgaDir() %>%
+    stringr::str_c(., "/storage")
+
+}
 
 
 # c -----------------------------------------------------------------------
@@ -122,131 +158,50 @@ checkLaborgaConfiguration <- function(in_shiny = FALSE){
 }
 
 
+#' @title Create `laborga` directories
+#'
+#' @description Savely creates directories required for `laborga` to work.
+#'
+#' @inherit argument_dummy params
+#'
+#' @return Invisible `TRUE` if successful.
+#' @export
+#'
+createLabOrgaDir<- function(in_shiny = FALSE){
 
-#' @title Configure `laborga` storage directory
+  dir <- assembleLabOrgaDir()
+
+  create_directory(dir, in_shiny = in_shiny)
+
+}
+
+#' @rdname createLabOrgaDir
+#' @export
+createLabOrgaStorageDir <- function(){
+
+  dir <- assembleLabOrgaStorageDir()
+
+  create_directory(dir, in_shiny = in_shiny)
+
+}
+
+
+
+
+#' @title Configure `laborga` storage tables
 #'
-#' @description This function allows the user to configure the `laborga` storage directory by setting the storage
-#' directory path. It checks if the directory exists and prompts the user to create it if it
-#' doesn't exist. The user is then asked to confirm the directory path before setting it as
-#' an environment variable
+#' @description This function configures the `laborga`directories by checking
+#' if they exist and creating them if not.
 #'
-#' @param dir Character string specifying the storage directory path for `laborga`.
+#' @inherit argument_dummy params
 #'
 #' @return An invisible `TRUE` if configuration was succesfull. An invisible `FALSE`, if not.
 #'
-#' @details
-#' The `configureLaborga()` function is used to configure the `laborga` storage directory. It takes
-#' a directory path as input and performs the following steps:
-#'
-#' \itemize{
-#'   \item Normalizes the directory path using `normalizePath()`.
-#'   \item Checks if the directory exists using `dir.exists()`.
-#'   \item If the directory doesn't exist, prompts the user to create it.
-#'   \item If the user confirms to create the directory, it uses `dir.create(recursive = TRUE)` to create it.
-#'   \item Asks the user to confirm the directory path.
-#'   \item If the user confirms, sets the directory path as an environment
-#'   variable named LABORGA_STORAGE_DIRECTORY using `Sys.setenv()`.
-#' }
-#'
-#' If the directory already exists the user is asked to overwrite it. If it does not exist
-#' the user is asked if the directory should be created. If he chooses not to create it, the function is
-#' aborted and the `laborga` storage directory is not configured.
-#'
-#' @seealso [`configureStorageTables()`]
-#'
-#' @examples
-#' # Configure the `laborga` storage directory
-#' configureLaborga("/path/to/laborga")
-#'
-#' @export
-configureStorageDirectory <- function(dir) {
+configureStorageDirectory <- function(in_shiny = FALSE, verbose = TRUE){
 
-  # 1. Set the default directory --------------------------------------------
+  createLabOrgaDir(in_shiny = in_shiny)
 
-  # check if already a valid directory exists
-  if(storageDirectorySet() & storageDirectoryExists()){
-
-    set_dir <- getStorageDirectory()
-
-    overwrite_dir <-
-      base::readline(
-        base::paste(
-          "There is already an existing storage directory set: '",
-          set_dir,
-          "' Do you want to overwrite? (yes/no)"
-          )
-        )
-
-    if(base::tolower(overwrite_dir) != "yes"){
-
-      base::cat("Configuration stopped. Storage directory remains as is.")
-
-      return(base::invisible(TRUE))
-
-    }
-
-  }
-
-  # continue with new input
-  dir <- base::normalizePath(dir, mustWork = FALSE)
-
-  # Check if the directory exists
-  if(!base::dir.exists(dir)){
-
-    # Prompt the user to create the directory
-    create_dir <- base::readline(paste("The directory does not exist. Create the directory? (yes/no): "))
-
-    if(base::tolower(create_dir) == "yes"){
-
-      # Create the directory
-      dir_created <- base::dir.create(dir, recursive = TRUE)
-
-      if(dir_created) {
-
-        base::cat("Directory created successfully.\n")
-
-      } else {
-
-        base::cat("Failed to create the directory.\n")
-
-        return(base::invisible(FALSE))
-
-      }
-
-    } else {
-
-      base::cat("Configuration aborted. Please run configureLaborga() again with a valid directory.\n")
-
-      return(base::invisible(FALSE))
-
-    }
-  }
-
-  # Prompt the user to confirm the directory path
-  confirm <-
-    base::readline(
-      base::paste(
-        "Is this the correct directory you want to set as the laborga storage directory?",
-        dir,
-        "(yes/no): "
-        )
-      )
-
-  if(base::tolower(confirm) == "yes"){
-
-    base::Sys.setenv("LABORGA_STORAGE_DIRECTORY" = dir)
-
-    base::cat("Laborga storage directory successfully configured.\n")
-
-  } else {
-
-    base::cat("Configuration aborted. Please run configureLaborga() again to set the correct directory.\n")
-
-    return(base::invisible(FALSE))
-
-  }
-
-  base::invisible(TRUE)
+  createLabOrgaStorageDir()
 
 }
 
@@ -255,7 +210,7 @@ configureStorageDirectory <- function(dir) {
 #' @title Configure `laborga` storage tables
 #'
 #' @description This function configures the four tables in which
-#' the information is stored. I requires prior configuration of the
+#' the information is stored. It requires prior configuration of the
 #' storage directory via `configureStorageDirectory()`.
 #'
 #' @param overwrite Logical. Must be set to `TRUE` in case of equal file names
@@ -272,19 +227,17 @@ configureStorageDirectory <- function(dir) {
 #'   \item *<storage_dir>/tissue_donor_storage_df.RDS*
 #'   \item *<storage_dir>/tissue_sample_storage_df.RDS*
 #'   \item *<storage_dir>/tissue_portion_storage_df.RDS*
-#'   \item *<storage_df>/raw_data_storage_df.RDS*
+#'   \item *<storage_dir>/raw_data_storage_df.RDS*
 #'   }
 #'
-#' @export
 configureStorageTables <- function(overwrite = FALSE,
                                    in_shiny = FALSE,
                                    verbose = TRUE){
 
-  storageDirectorySet(error = TRUE)
+  #storageDirectorySet(error = TRUE)
+  labOrgaStorageDirExists(error = TRUE)
 
-  storageDirectoryExists(error = TRUE)
-
-  dir <- getStorageDirectory()
+  dir <- getLabOrgaStorageDir(in_shiny = in_shiny)
 
   for(dl in data_levels){
 
@@ -293,7 +246,7 @@ configureStorageTables <- function(overwrite = FALSE,
       dir = dir,
       overwrite = overwrite,
       verbose = verbose,
-      in_shiny = FALSE
+      in_shiny = in_shiny
     )
 
   }
@@ -301,24 +254,82 @@ configureStorageTables <- function(overwrite = FALSE,
 }
 
 
+#' @title Configures `laborga` users table
+#'
+#' @inherit argument_dummy params
+#'
+#' @return An invisible `TRUE` if configuration was succesfull. An invisible `FALSE`, if not.
+#'
+#' @seealso [`load_users_df()`]
+#'
+configureUserTable <- function(overwrite = FALSE,
+                               in_shiny = FALSE,
+                               verbose = TRUE){
+
+  labOrgaDirExists(error = TRUE)
+
+  dir <- stringr::str_c(assembleLabOrgaDir(), "/users_df.RDS")
+
+  if(base::file.exists(dir)){
+
+    overwrite <-
+      create_dialoge(
+        situation = glue::glue("File '{dir}' already exists."),
+        question = "Do you want to overwrite it?"
+      )
+
+    if(overwrite == "yes"){
+
+      base::unlink(x = dir, recursive = TRUE, force = TRUE)
+
+    } else {
+
+      base::cat("Aborted. Did not overwrite directory.")
+
+      return(base::invisible(FALSE))
+
+    }
+
+  }
+
+  base::saveRDS(object = empty_users_df, file = dir)
+
+  confuns::give_feedback(
+    msg = glue::glue("{dir} created."),
+    verbose = verbose,
+    in_shiny = in_shiny,
+    with.time = FALSE
+  )
+
+}
+
+
+
 # g -----------------------------------------------------------------------
 
-#' @title Obtain configured storage directory
+
+#' @title Obtain `laborga` storage directory
 #'
-#' @description Retrieves what is currently set as the environment
-#' variable *LABORGA_STORAGE_DIRECTORY*.
+#' @description Assembles `laborga` storage directory **AND** initiates
+#' configuration if it does not exist via `configureStorageDirectory()`.
 #'
-#' @return Character value.
+#' @inherit argument_dummy params
 #'
+#' @return Character.
 #' @export
 #'
-#' @examples
-#'
-#'  getStorageDirectory()
-#'
-getStorageDirectory <- function(){
 
-  base::Sys.getenv(x = "LABORGA_STORAGE_DIRECTORY")
+getLabOrgaStorageDir <- function(in_shiny = FALSE){
+
+  dir <- assembleLabOrgaStorageDir()
+
+  if(!base::dir.exists(dir)){
+
+    configureStorageDirectory(in_shiny = in_shiny)
+
+  }
+
+  return(dir)
 
 }
 
@@ -327,7 +338,7 @@ getStorageDirectory <- function(){
 # s -----------------------------------------------------------------------
 
 
-#' @title Set `laborga` storage directory
+#' @title Set `laborga` storage directory --- probably not needed
 #'
 #' @description Sets the environment variable LABORGA_STORAGE_DIRECTORY.
 #'
@@ -341,12 +352,28 @@ setStorageDirectory <- function(dir, verbose = TRUE){
 
   base::stopifnot(base::is.character(dir) & base::length(dir) == 1)
 
-  base::Sys.setenv("LABORGA_STORAGE_DIRECTORY" = dir)
+  if(Sys.info()["sysname"] == "Windows"){
 
-  confuns::give_feedback(
-    msg = glue::glue("Sys. environment variable 'LABORGA_STORAGE_DIRECTORY' set to '{dir}'."),
-    verbose = verbose
-  )
+    command <- stringr::str_c('setx LABORGA_STORAGE_DIRECTORY "', dir, '"', sep = "")
+
+  } else {
+
+    command <- stringr::str_c('export LABORGA_STORAGE_DIRECTORY ="', dir, '"',  sep = "")
+
+  }
+
+  base::system(command = command)
+
+  if(FALSE){
+
+    base::Sys.setenv("LABORGA_STORAGE_DIRECTORY" = dir)
+
+    confuns::give_feedback(
+      msg = glue::glue("Sys. environment variable 'LABORGA_STORAGE_DIRECTORY' set to '{dir}'."),
+      verbose = verbose
+    )
+
+  }
 
   base::invisible(TRUE)
 
@@ -355,7 +382,7 @@ setStorageDirectory <- function(dir, verbose = TRUE){
 
 
 
-#' @title Test storage directory validity
+#' @title Test existence of `laborga` directories
 #'
 #' @param error Logical. If `TRUE`, throws an error if test results
 #' are negative.
@@ -363,15 +390,16 @@ setStorageDirectory <- function(dir, verbose = TRUE){
 #' @return Logical value.
 #' @export
 #'
-storageDirectoryExists <- function(error = FALSE){
+
+labOrgaDirExists <- function(error = FALSE){
 
   out <-
-    getStorageDirectory() %>%
+    assembleLabOrgaStorageDir() %>%
     base::dir.exists()
 
   if(base::isFALSE(out) & base::isTRUE(error)){
 
-    stop("laborga storage directory does not exist.")
+    stop("LabOrga directory does not exist.")
 
   }
 
@@ -379,21 +407,21 @@ storageDirectoryExists <- function(error = FALSE){
 
 }
 
-
-#' @rdname storageDirectoryExists
+#' @rdname labOrgaDirExists
 #' @export
-storageDirectorySet <- function(error = FALSE){
+labOrgaStorageDirExists <- function(error = FALSE){
 
-  dir <- getStorageDirectory()
-
-  out <- dir != ""
+  out <-
+    assembleLabOrgaStorageDir() %>%
+    base::dir.exists()
 
   if(base::isFALSE(out) & base::isTRUE(error)){
 
-    stop("laborga storage directory has not been set.")
+    stop("LabOrga storage directory does not exist.")
 
   }
 
   return(out)
 
 }
+

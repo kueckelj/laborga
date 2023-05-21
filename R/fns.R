@@ -293,6 +293,15 @@ check_input_req_vars_tissue_portion <- function(input_tissue_portion, in_shiny =
 
 }
 
+check_password <- function(password){
+
+  stringr::str_split(password, pattern = "") %>%
+    base::unlist() %>%
+    purrr::map_lgl(.f = ~stringr::str_detect(.x, pattern = "[A-Z]|[a-z]|[0-9]|\\!|\\?|\\_|\\-")) %>%
+    base::all()
+
+}
+
 check_pub_ref <- function(input, error = FALSE, in_shiny = FALSE){
 
   check_string(
@@ -328,102 +337,34 @@ check_string <- function(input, pattern, ref, error = FALSE, in_shiny = in_shiny
 
 }
 
-create_empty_df <- function(name_class_list){
+check_username <- function(username){
 
-  empty_df <- tibble::tibble()
+  stringr::str_split(username, pattern = "") %>%
+    base::unlist() %>%
+    purrr::map_lgl(.f = ~stringr::str_detect(.x, pattern = "[A-Z]|[a-z]| {1}")) %>%
+    base::all()
 
-  for(i in base::seq_along(name_class_list)) {
+}
 
-    col_name <- base::names(name_class_list)[i]
-    col_class <- name_class_list[[col_name]]
+create_dialoge <- function(situation,
+                           question,
+                           in.shiny = FALSE){
 
-    if(stringr::str_detect(col_class, pattern = "^list")){
+  if(base::isTRUE(in.shiny)){
 
-      empty_df[[col_name]] <- base::vector(mode = "list")
 
-    } else if(col_class == "date"){
 
-      empty_df[[col_name]] <- lubridate::ymd()
+  } else {
 
-    } else if(col_class == "factor") {
-
-      empty_df[[col_name]] <- base::factor(levels = base::character(0))
-
-    } else {
-
-      empty_df[[col_name]] <- base::vector(mode = col_class)
-
-    }
+    out <-
+      base::readline(prompt = stringr::str_c(situation, question, "(yes/no)", sep = " ")) %>%
+      base::tolower()
 
   }
 
-  return(empty_df)
+  return(out)
 
 }
-
-create_empty_storage_df <- function(d_level){
-
-  d_level <- dlc(d_level)
-
-  df <-
-    purrr::keep(
-      .x = data_variables,
-      .p = ~ .x$d_level == d_level
-    ) %>%
-      purrr::map(
-        .f = ~ .x$class
-      ) %>%
-      create_empty_df()
-
-  df[[id_vars_merged[dln(d_level)]]] <- base::character(0)
-
-  df <- sort_storage_df(df)
-
-  return(df)
-
-
-}
-
-
-write_empty_storage_df <- function(d_level,
-                                   dir,
-                                   overwrite = FALSE,
-                                   verbose = TRUE,
-                                   in_shiny = FALSE){
-
-  df <- create_empty_storage_df(d_level)
-
-  storage_file <- stringr::str_c(d_level, "_storage_df.RDS")
-
-  dir_to_file <- stringr::str_c(dir, "/", storage_file)
-
-  if(base::file.exists(dir_to_file) & !base::isTRUE(overwrite)){
-
-    msg <- glue::glue("'{dir_to_file}' already exists. Set overwrite to TRUE to proceed.")
-
-    confuns::give_feedback(
-      msg = msg,
-      fdb.fn = "stop",
-      with.time = FALSE,
-      in.shiny = in_shiny
-    )
-
-  }
-
-  base::saveRDS(object = df, file = dir_to_file)
-
-  confuns::give_feedback(
-    msg = glue::glue("{dir_to_file} created."),
-    verbose = verbose,
-    with.time = FALSE
-  )
-
-  base::invisible(TRUE)
-
-}
-
-
-
 
 
 #' @title Shiny feedback messages
@@ -447,10 +388,17 @@ checkpoint <- function(evaluate = TRUE,
                        case_false = NULL,
                        error_notifications = list(
 
+                         invalid_password = "The password must only contain letters, numbers, !, ?, _ or -.",
+
                          invalid_project_dir = "The storage directory is invalid.",
+                         invalid_username = "Username must not contain anything else than letters and empty space.",
 
                          no_entry_selected = "Please select a row in the table.",
                          no_project_ids = "Please add at least one data entry.",
+                         non_matching_passwords = "Passwords must be identical.",
+
+                         username_taken = "Username is already taken.",
+                         username_unknown = "Username is unknown.",
 
                          zero_tissue_portions = "Number of tissue portions to add must not be 0."
 
@@ -524,7 +472,7 @@ complete_storage_df <- function(df, df_list = NULL, rn = FALSE){
 
   d_level <- get_d_level(df)
 
-  if(d_level != "tissue_donor"){ # tissue donor is always complete
+  if(d_level != "tissue_donor" & base::nrow(df) >= 1){ # tissue donor is always complete
 
     if(!is_complete(df)){
 
@@ -573,6 +521,109 @@ complete_storage_df <- function(df, df_list = NULL, rn = FALSE){
   return(out)
 
 }
+
+
+create_directory <- function(dir, ask = TRUE, in_shiny = FALSE){
+
+  if(base::dir.exists(dir)){
+
+    if(base::isTRUE(ask)){
+
+      overwrite <-
+        create_dialoge(
+          situation = glue::glue("The directory '{dir}' already exists."),
+          question = "Do you want to overwrite it's content?",
+          in.shiny = in_shiny
+        )
+
+      if(overwrite == "yes"){
+
+        base::unlink(x = dir, recursive = TRUE, force = TRUE)
+        base::dir.create(dir, recursive = recursive)
+
+      } else {
+
+        base::cat("Aborted. Did not create the directory.\n")
+
+        return(base::invisible(FALSE))
+
+      }
+
+    } else {
+
+      base::cat("Directory already exists.\n")
+
+      return(base::invisible(FALSE))
+
+    }
+
+  } else {
+
+    base::dir.create(dir, recursive = recursive)
+
+  }
+
+  base::invisible(TRUE)
+
+}
+
+create_empty_df <- function(name_class_list){
+
+  empty_df <- tibble::tibble()
+
+  for(i in base::seq_along(name_class_list)) {
+
+    col_name <- base::names(name_class_list)[i]
+    col_class <- name_class_list[[col_name]]
+
+    if(stringr::str_detect(col_class, pattern = "^list")){
+
+      empty_df[[col_name]] <- base::vector(mode = "list")
+
+    } else if(col_class == "date"){
+
+      empty_df[[col_name]] <- lubridate::ymd()
+
+    } else if(col_class == "factor") {
+
+      empty_df[[col_name]] <- base::factor(levels = base::character(0))
+
+    } else {
+
+      empty_df[[col_name]] <- base::vector(mode = col_class)
+
+    }
+
+  }
+
+  return(empty_df)
+
+}
+
+create_empty_storage_df <- function(d_level){
+
+  d_level <- dlc(d_level)
+
+  df <-
+    purrr::keep(
+      .x = data_variables,
+      .p = ~ .x$d_level == d_level
+    ) %>%
+    purrr::map(
+      .f = ~ .x$class
+    ) %>%
+    create_empty_df()
+
+  df[[id_vars_merged[dln(d_level)]]] <- base::character(0)
+
+  df <- sort_storage_df(df)
+
+  return(df)
+
+
+}
+
+
 
 
 create_id_vars <- function(df, d_level){
@@ -875,26 +926,36 @@ extract_authors_all <- function(pub_ref){
 
 extract_id <- function(id, d_level_out){
 
-  input_level <- identify_d_level(id)
+  if(base::length(id) == 0){
 
-  if(dln(input_level) < dln(d_level_out)){
+    out <- base::character(0L)
 
-    stop(
-      glue::glue(
-        "Data level {input_level} is lower than data level {d_level_out}.",
-        " Can not extract {d_level_out}-ID from {input_level}-ID."
+  } else {
+
+    input_level <- identify_d_level(id)
+
+    if(dln(input_level) < dln(d_level_out)){
+
+      stop(
+        glue::glue(
+          "Data level {input_level} is lower than data level {d_level_out}.",
+          " Can not extract {d_level_out}-ID from {input_level}-ID."
+        )
       )
-    )
+
+    }
+
+    n_seps <- id_sep_count[d_level_out]
+
+    pattern <-
+      stringr::str_c(base::rep("[0-9]*", n_seps+1), collapse = id_sep_regex) %>%
+      stringr::str_c("^", .)
+
+    out <- stringr::str_extract(string = id, pattern = pattern)
 
   }
 
-  n_seps <- id_sep_count[d_level_out]
-
-  pattern <-
-    stringr::str_c(base::rep("[0-9]*", n_seps+1), collapse = id_sep_regex) %>%
-    stringr::str_c("^", .)
-
-  stringr::str_extract(string = id, pattern = pattern)
+  return(out)
 
 }
 
@@ -1392,7 +1453,7 @@ load_storage_df <- function(d_level){
 
   d_level <- dlc(d_level)
 
-  file_dir <- stringr::str_c(getStorageDirectory(), "/", d_level, "_storage_df.RDS")
+  file_dir <- stringr::str_c(getLabOrgaStorageDir(), "/", d_level, "_df.RDS")
 
  # base::readRDS(
   #  file = stringr::str_c("data_private/current_", d_level, "_storage_df.RDS")
@@ -1402,6 +1463,12 @@ load_storage_df <- function(d_level){
 
 }
 
+
+load_users_df <- function(){
+
+  base::readRDS(file = stringr::str_c(assembleLabOrgaDir(), "/users_df.RDS"))
+
+}
 
 # m -----------------------------------------------------------------------
 
@@ -1892,11 +1959,11 @@ save_storage_df <- function(df){
 
   base::stopifnot(base::all(info_vars %in% base::colnames(df)))
 
-  dir <- getStorageDirectory()
+  dir <- getLabOrgaStorageDir()
 
   base::saveRDS(
     object = df,
-    file = stringr::str_c(dir, "/", d_level, "storage_df.RDS")
+    file = stringr::str_c(dir, "/", d_level, "_df.RDS")
   )
 
   #base::saveRDS(
@@ -1908,7 +1975,15 @@ save_storage_df <- function(df){
 
 }
 
+save_users_df <- function(df){
 
+  dir <- stringr::str_c(assembleLabOrgaDir(), "/users_df.RDS")
+
+  base::saveRDS(df, file = dir)
+
+  base::invisible(TRUE)
+
+}
 
 
 
@@ -1953,7 +2028,9 @@ shrink_storage_df <- function(df){
 
   dplyr::select(
     .data = df,
-    dplyr::any_of(base::names(data_tables[[d_level]]))
+    dplyr::any_of(id_vars_merged[dln(d_level)]),
+    dplyr::any_of(get_id_vars(d_level, level_spec = TRUE)),
+    dplyr::any_of(get_info_vars(d_level, level_spec = TRUE))
   ) %>%
     remove_id_column() %>% # removes id columns from other levels
     sort_storage_df()
@@ -2044,6 +2121,52 @@ validate_project_name <- function(pname){
 
   shiny::isTruthy(pname) &
     stringr::str_detect(pname, pattern = "[A-Z]|[a-z]|[0-9]")
+
+}
+
+
+
+# w -----------------------------------------------------------------------
+
+
+#' @title Write empty storage data.frames
+#'
+#' @seealso [`save_storage_df()`], [`load_storage_df()`]
+#'
+write_empty_storage_df <- function(d_level,
+                                   dir,
+                                   overwrite = FALSE,
+                                   verbose = TRUE,
+                                   in_shiny = FALSE){
+
+  df <- create_empty_storage_df(d_level)
+
+  storage_file <- stringr::str_c(d_level, "_df.RDS")
+
+  dir_to_file <- stringr::str_c(dir, "/", storage_file)
+
+  if(base::file.exists(dir_to_file) & !base::isTRUE(overwrite)){
+
+    msg <- glue::glue("'{dir_to_file}' already exists. Set overwrite to TRUE to proceed.")
+
+    confuns::give_feedback(
+      msg = msg,
+      fdb.fn = "stop",
+      with.time = FALSE,
+      in.shiny = in_shiny
+    )
+
+  }
+
+  base::saveRDS(object = df, file = dir_to_file)
+
+  confuns::give_feedback(
+    msg = glue::glue("{dir_to_file} created."),
+    verbose = verbose,
+    with.time = FALSE
+  )
+
+  base::invisible(TRUE)
 
 }
 
