@@ -85,6 +85,44 @@ add_sample <- function(df,
 
 
 
+#' @title Track repository manipulation
+#'
+#' @description Tracks repository manipulation by adding it to the logfile.
+#'
+#' @param username The name of the user currently logged in.
+#' @param data_level The current data level.
+#' @param entry_id The ID of the entry that is manipulated.
+#' @param fn_name The name of the function with which the repository was manipulated.
+#' @param fn_input The input of the function with which the repository was manipulated.
+#'
+#' @return Invisible `TRUE`if everything went fine.
+#' @export
+#'
+add_to_logfile <- function(username, data_level, entry_id, fn_name, fn_input){
+
+  lf_df <- load_logfile_df()
+
+  n <- base::nrow(lf_df)
+
+  df_new <-
+    tibble::tibble(
+      username = username,
+      sys_time = base::Sys.time(),
+      data_level = data_level,
+      entry_id = entry_id,
+      fn_name = fn_name,
+      fn_input = list(fn_input)
+    )
+
+  lf_df_new <- base::rbind(lf_df, df_new)
+
+  save_logfile_df(lf_df_new)
+
+  base::invisible(TRUE)
+
+}
+
+
 # c -----------------------------------------------------------------------
 
 
@@ -114,7 +152,7 @@ check_input_id_vars <- function(input_id_vars, d_level, in_shiny = FALSE){
         if(x == ""){
 
           confuns::give_feedback(
-            msg = glue::glue("Input for '{var_label}' is empty."),
+            msg = glue::glue("Input for '{var_label}' is missing."),
             fdb.fn = "stop",
             in.shiny = in_shiny,
             with.time = FALSE
@@ -160,7 +198,7 @@ check_input_info_vars <- function(input_info_vars, d_level, in_shiny = FALSE){
     if(input_info_vars$sex == ""){
 
       confuns::give_feedback(
-        msg = "Input for 'Sex' is empty.",
+        msg = "Input for 'Sex' is missing.",
         fdb.fn = "stop",
         in.shiny = in_shiny,
         with.time = FALSE
@@ -173,7 +211,7 @@ check_input_info_vars <- function(input_info_vars, d_level, in_shiny = FALSE){
     if(input_info_vars$organ == ""){
 
       confuns::give_feedback(
-        msg = "Input for 'Organ' is empty.",
+        msg = "Input for 'Organ' is missing.",
         fdb.fn = "stop",
         in.shiny = in_shiny,
         with.time = FALSE
@@ -186,7 +224,7 @@ check_input_info_vars <- function(input_info_vars, d_level, in_shiny = FALSE){
       if(input_info_vars$organ_part == ""){
 
         confuns::give_feedback(
-          msg = "Input for 'Organ Part' is empty.",
+          msg = "Input for 'Organ Part' is missing.",
           fdb.fn = "stop",
           in.shiny = in_shiny,
           with.time = FALSE
@@ -201,13 +239,24 @@ check_input_info_vars <- function(input_info_vars, d_level, in_shiny = FALSE){
       if(input_info_vars$side == ""){
 
         confuns::give_feedback(
-          msg = "Input for 'Side' is empty.",
+          msg = "Input for 'Side' is missing.",
           fdb.fn = "stop",
           in.shiny = in_shiny,
           with.time = FALSE
         )
 
       }
+
+    }
+
+    if(input_info_vars$workgroup == ""){
+
+      confuns::give_feedback(
+        msg = "Input for 'Workgroup' is missing.",
+        fdb.fn = "stop",
+        in.shiny = in_shiny,
+        with.time = FALSE
+      )
 
     }
 
@@ -220,7 +269,7 @@ check_input_info_vars <- function(input_info_vars, d_level, in_shiny = FALSE){
     if(input_info_vars$assay_trademark == ""){
 
       confuns::give_feedback(
-        msg = "Input for 'Assay Trademark' is empty.",
+        msg = "Input for 'Assay Trademark' is missing.",
         fdb.fn = "stop",
         in.shiny = in_shiny,
         with.time = FALSE
@@ -231,7 +280,7 @@ check_input_info_vars <- function(input_info_vars, d_level, in_shiny = FALSE){
     if(input_info_vars$link_raw_data == ""){
 
       confuns::give_feedback(
-        msg = "Input for 'Link to Data' is empty.",
+        msg = "Input for 'Link to Data' is missing.",
         fdb.fn = "stop",
         in.shiny = in_shiny,
         with.time = FALSE
@@ -269,7 +318,7 @@ check_input_req_vars_tissue_portion <- function(input_tissue_portion, in_shiny =
       if(input_tp$info$storage_mode == ""){
 
         confuns::give_feedback(
-          msg = glue::glue("Input for 'Storage Mode' of tissue portion {index} is empty."),
+          msg = glue::glue("Input for 'Storage Mode' of tissue portion {index} is missing."),
           fdb.fn = "stop",
           with.time = FALSE,
           in.shiny = in_shiny
@@ -478,8 +527,7 @@ complete_storage_df <- function(df, df_list = NULL, rn = FALSE){
 
       if(dln(d_level) != 1){ # d_level == 1 is always "complete"
 
-        d_levels <-
-          data_levels[1:(dln(d_level)-1)]
+        d_levels <- data_levels[1:(dln(d_level)-1)]
 
         for(dl in d_levels){
 
@@ -600,6 +648,19 @@ create_empty_df <- function(name_class_list){
 
 }
 
+create_empty_logfile_df <- function(){
+
+  tibble::tibble(
+    username = base::character(), # the user currently logged in
+    sys_time = base::Sys.time(), # time of the action
+    data_level = base::character(), # the data level of the manipulated table
+    entry_id = base::character(), # the ID of the entry
+    fn_name = base::character(), # the underlying function used to manipulate the repository
+    fn_input = base::list() # the argument input used to manipulate the repository
+  )
+
+}
+
 create_empty_storage_df <- function(d_level){
 
   d_level <- dlc(d_level)
@@ -620,6 +681,17 @@ create_empty_storage_df <- function(d_level){
 
   return(df)
 
+
+}
+
+create_empty_users_df <- function(){
+
+  tibble::tibble(
+    username = base::character(),
+    password = base::character(),
+    permissions = base::character(),
+    created = lubridate::ymd()
+  )
 
 }
 
@@ -647,7 +719,7 @@ create_id_vars <- function(df, d_level){
 
 # d -----------------------------------------------------------------------
 
-delete_entries <- function(id, in_shiny = FALSE, verbose = TRUE){
+delete_entries <- function(id, username, in_shiny = FALSE, verbose = TRUE){
 
   entry_level <-
     identify_d_level(id) %>%
@@ -655,10 +727,24 @@ delete_entries <- function(id, in_shiny = FALSE, verbose = TRUE){
 
   entry_level_id_var <- id_vars_merged[[entry_level]]
 
+  info <- list()
+
   for(i in entry_level:4){
 
     df <- get_storage_df(d_level = i, complete = TRUE)
 
+    # collect information for logfile
+    d_level <- dlc(i)
+
+    id_var <- id_vars_merged[i]
+
+    removed_ids <-
+      dplyr::filter(df, (!!rlang::sym(entry_level_id_var) == {{id}})) %>%
+      dplyr::pull(var = id_var)
+
+    info[[d_level]] <- list(d_level = d_level, removed_id = removed_ids)
+
+    # remove from repository
     filtered_df <- dplyr::filter(df, !(!!rlang::sym(entry_level_id_var) == {{id}}))
 
     n <- (base::nrow(df)-base::nrow(filtered_df))
@@ -680,6 +766,13 @@ delete_entries <- function(id, in_shiny = FALSE, verbose = TRUE){
 
   }
 
+  add_to_logfile(
+    username = username,
+    data_level = dlc(entry_level),
+    entry_id = id,
+    fn_name = "delete_entries",
+    fn_input = info
+  )
 
   base::invisible(TRUE)
 
@@ -820,7 +913,8 @@ edit_entry <- function(df,
                        input_info_vars,
                        verbose = TRUE,
                        save = FALSE,
-                       in_shiny = FALSE){
+                       in_shiny = FALSE,
+                       username = character(0)){
 
   d_level <- get_d_level(df)
 
@@ -866,8 +960,15 @@ edit_entry <- function(df,
 
     save_storage_df(df = df)
 
-  }
+    add_to_logfile(
+      username = username,
+      data_level = d_level,
+      entry_id = selected_id,
+      fn_name = "edit_entry",
+      fn_input = list(input_info_vars = input_info_vars)
+    )
 
+  }
 
   return(df)
 
@@ -1069,9 +1170,62 @@ filter_storage_table <- function(df, input, suff = NULL){
 
 }
 
+# returns a list of argument input of the function within fn_input_as_list() is called
+fn_input_as_list <- function(){
 
+  ce <- rlang::caller_env()
+
+  cl_fn <- rlang::caller_fn()
+
+  cl_frame <- base::sys.parent()
+
+  cl_call <- base::sys.call(which = cl_frame)
+
+  cl_fn_name <- base::as.character(cl_call)[1]
+
+  cl_args <-
+    rlang::fn_fmls_names(fn = cl_fn)
+
+  cl_args <- cl_args[cl_args != "..."]
+
+  out <-
+    purrr::map(
+      .x = cl_args,
+      .f = function(arg){
+
+        base::parse(text = arg) %>%
+          base::eval(envir = ce)
+
+      }
+    ) %>%
+    purrr::set_names(nm = cl_args)
+
+  return(out)
+
+}
 
 # g -----------------------------------------------------------------------
+
+get_choices <- function(x){
+
+  if(base::is.character(x)){
+
+    out <- base::unique(x)
+
+  } else if(base::is.factor(x)) {
+
+    out <- base::levels(x)
+
+  } else {
+
+    out <- NULL
+
+  }
+
+  return(out)
+
+}
+
 
 #' @title Obtain data level
 #' @export
@@ -1440,6 +1594,12 @@ is_complete <- function(df){
 
 launchLabOrga <- function(){
 
+  if(!is_configured()){
+
+    configure_lab_orga()
+
+  }
+
   shiny::runApp(
     shiny::shinyApp(
       ui = launchLabOrgaUI(),
@@ -1449,26 +1609,6 @@ launchLabOrga <- function(){
 
 }
 
-load_storage_df <- function(d_level){
-
-  d_level <- dlc(d_level)
-
-  file_dir <- stringr::str_c(getLabOrgaStorageDir(), "/", d_level, "_df.RDS")
-
- # base::readRDS(
-  #  file = stringr::str_c("data_private/current_", d_level, "_storage_df.RDS")
-  #)
-
-  base::readRDS(file_dir)
-
-}
-
-
-load_users_df <- function(){
-
-  base::readRDS(file = stringr::str_c(assembleLabOrgaDir(), "/users_df.RDS"))
-
-}
 
 # m -----------------------------------------------------------------------
 
@@ -1482,6 +1622,7 @@ make_entry <- function(df,
                        save = FALSE,
                        df_list = NULL,
                        verbose = TRUE,
+                       username = character(1),
                        in_shiny = FALSE,
                        ...){
 
@@ -1592,6 +1733,19 @@ make_entry <- function(df,
 
     save_storage_df(df_new)
 
+    add_to_logfile(
+      username = username,
+      data_level = d_level,
+      entry_id = new_id,
+      fn_name = "make_entry",
+      fn_input = list(
+        input_id_vars = input_id_vars,
+        input_info_vars = input_info_vars,
+        prev_id_merged = prev_id_merged
+      )
+    )
+
+
   }
 
   return(df_new)
@@ -1675,7 +1829,6 @@ make_tissue_donor_ids <- function(df){
     .data = df,
     id_tissue_donor_num = stringr::str_c(
       base::as.numeric(institution),
-      base::as.numeric(workgroup),
       base::as.numeric(donor_species),
       base::as.numeric(donor_tag),
       sep = id_sep
@@ -1690,8 +1843,6 @@ make_tissue_donor_ids <- function(df){
 }
 
 make_tissue_portion_ids <- function(df){
-
-  #df <- make_tissue_sample_ids(df)
 
   dplyr::mutate(
     .data = df,
@@ -1734,11 +1885,16 @@ make_tissue_sample_ids <- function(df){
 merge_storage_df <- function(df, d_level, df_merge = NULL){
 
   d_level_input <- get_d_level(df)
-  d_level_merge <- dlc(d_level)
 
   if(base::is.null(df_merge)){
 
+    d_level_merge <- dlc(d_level)
+
     df_merge <- load_storage_df(d_level_merge)
+
+  } else {
+
+    d_level_merge <- get_d_level(df_merge)
 
   }
 
@@ -1746,7 +1902,7 @@ merge_storage_df <- function(df, d_level, df_merge = NULL){
 
     out <-
       dplyr::left_join(
-        x = add_id_column(df, d_level_merge),
+        x = add_id_columns(df, d_level_merge),
         y = df_merge,
         by = stringr::str_c("id_", d_level_merge, "_num")
       )
@@ -1947,43 +2103,6 @@ remove_id_column <- function(df, d_level = NULL){
 
 # s -----------------------------------------------------------------------
 
-save_storage_df <- function(df){
-
-  d_level <- get_d_level(df)
-
-  # always stores the shrinked version!!!
-  # do not change, other functions rely on that
-  df <- shrink_storage_df(df)
-
-  info_vars <- get_info_vars(d_level, level_spec = TRUE)
-
-  base::stopifnot(base::all(info_vars %in% base::colnames(df)))
-
-  dir <- getLabOrgaStorageDir()
-
-  base::saveRDS(
-    object = df,
-    file = stringr::str_c(dir, "/", d_level, "_df.RDS")
-  )
-
-  #base::saveRDS(
-  #  object = df,
-  #  file = stringr::str_c("data_private\\current_", dl, "_storage_df.RDS")
-  #)
-
-  base::invisible(TRUE)
-
-}
-
-save_users_df <- function(df){
-
-  dir <- stringr::str_c(assembleLabOrgaDir(), "/users_df.RDS")
-
-  base::saveRDS(df, file = dir)
-
-  base::invisible(TRUE)
-
-}
 
 
 
@@ -2129,25 +2248,20 @@ validate_project_name <- function(pname){
 # w -----------------------------------------------------------------------
 
 
-#' @title Write empty storage data.frames
-#'
-#' @seealso [`save_storage_df()`], [`load_storage_df()`]
-#'
-write_empty_storage_df <- function(d_level,
-                                   dir,
+write_empty_logfile_df <- function(dir_repo = get_dir_repository(),
                                    overwrite = FALSE,
                                    verbose = TRUE,
                                    in_shiny = FALSE){
 
-  df <- create_empty_storage_df(d_level)
+  df <- create_empty_logfile_df()
 
-  storage_file <- stringr::str_c(d_level, "_df.RDS")
+  filename <- repository_files$logfile$name
 
-  dir_to_file <- stringr::str_c(dir, "/", storage_file)
+  users_file <- stringr::str_c(dir_repo, "/", filename)
 
-  if(base::file.exists(dir_to_file) & !base::isTRUE(overwrite)){
+  if(base::file.exists(users_file) & !base::isTRUE(overwrite)){
 
-    msg <- glue::glue("'{dir_to_file}' already exists. Set overwrite to TRUE to proceed.")
+    msg <- glue::glue("'{users_file}' already exists. Set overwrite to TRUE to proceed.")
 
     confuns::give_feedback(
       msg = msg,
@@ -2158,15 +2272,142 @@ write_empty_storage_df <- function(d_level,
 
   }
 
-  base::saveRDS(object = df, file = dir_to_file)
+  base::saveRDS(object = df, file = users_file)
 
   confuns::give_feedback(
-    msg = glue::glue("{dir_to_file} created."),
+    msg = glue::glue("{users_file} created."),
     verbose = verbose,
-    with.time = FALSE
+    with.time = FALSE,
+    in.shiny = in_shiny
   )
 
   base::invisible(TRUE)
+
+}
+
+#' @title Write empty storage data.frames
+#'
+#' @seealso [`save_storage_df()`], [`load_storage_df()`]
+#'
+write_empty_storage_df <- function(d_level,
+                                   dir_repo = get_dir_repository(),
+                                   overwrite = FALSE,
+                                   verbose = TRUE,
+                                   in_shiny = FALSE){
+
+  d_level <- dlc(d_level)
+
+  df <- create_empty_storage_df(d_level)
+
+  filename <- repository_files[[stringr::str_c(d_level, "_table")]][["name"]]
+
+  storage_file <- stringr::str_c(dir_repo, "/", filename)
+
+  if(base::file.exists(storage_file) & !base::isTRUE(overwrite)){
+
+    msg <- glue::glue("'{storage_file}' already exists. Set overwrite to TRUE to proceed.")
+
+    confuns::give_feedback(
+      msg = msg,
+      fdb.fn = "stop",
+      with.time = FALSE,
+      in.shiny = in_shiny
+    )
+
+  }
+
+  base::saveRDS(object = df, file = storage_file)
+
+  confuns::give_feedback(
+    msg = glue::glue("{storage_file} created."),
+    verbose = verbose,
+    with.time = FALSE,
+    in.shiny = in_shiny
+  )
+
+  base::invisible(TRUE)
+
+}
+
+write_empty_users_df <- function(dir_repo = get_dir_repository(),
+                                 overwrite = FALSE,
+                                 verbose = TRUE,
+                                 in_shiny = FALSE){
+
+  df <- create_empty_users_df()
+
+  filename <- repository_files$users$name
+
+  users_file <- stringr::str_c(dir_repo, "/", filename)
+
+  if(base::file.exists(users_file) & !base::isTRUE(overwrite)){
+
+    msg <- glue::glue("'{users_file}' already exists. Set overwrite to TRUE to proceed.")
+
+    confuns::give_feedback(
+      msg = msg,
+      fdb.fn = "stop",
+      with.time = FALSE,
+      in.shiny = in_shiny
+    )
+
+  }
+
+  base::saveRDS(object = df, file = users_file)
+
+  confuns::give_feedback(
+    msg = glue::glue("{users_file} created."),
+    verbose = verbose,
+    with.time = FALSE,
+    in.shiny = in_shiny
+  )
+
+  base::invisible(TRUE)
+
+}
+
+write_empty_set_up <- function(dir_repo = get_dir_repository(),
+                               overwrite = FALSE,
+                               verbose = TRUE,
+                               in_shiny = FALSE){
+
+  #
+  obj <-
+    list(
+      connected_with = list(device1 = Sys.info()),
+      created_by = base::Sys.info(),
+      created_at = base::Sys.time(),
+      version = current_lab_orga_version
+      )
+
+  filename <- repository_files$setup$name
+
+  set_up_file <- stringr::str_c(dir_repo, "/", filename)
+
+  if(base::file.exists(set_up_file) & !base::isTRUE(overwrite)){
+
+    msg <- glue::glue("'{set_up_file}' already exists. Set overwrite to TRUE to proceed.")
+
+    confuns::give_feedback(
+      msg = msg,
+      fdb.fn = "stop",
+      with.time = FALSE,
+      in.shiny = in_shiny
+    )
+
+  }
+
+  base::saveRDS(object = obj, file = set_up_file)
+
+  confuns::give_feedback(
+    msg = glue::glue("{set_up_file} created."),
+    verbose = verbose,
+    with.time = FALSE,
+    in.shiny = in_shiny
+  )
+
+  base::invisible(TRUE)
+
 
 }
 

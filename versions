@@ -1,0 +1,20 @@
+
+analogue to code of function `update_repository()`
+
+v0.1.0 -------------------------------------------------------------------------
+
+First release
+
+v0.2.0 -------------------------------------------------------------------------
+
+- adds optional variable 'location' to data level tissue_portion
+
+v0.3.0 -------------------------------------------------------------------------
+
+- adds optional variable 'comment_<data_level>' to storage data.frames
+
+v0.4.0 -------------------------------------------------------------------------
+
+- adds optional variable 'surgeon' to storage data.frame
+- removes working_group from the ID variables of tissue donor and adds it
+  to required variables of tissue sample

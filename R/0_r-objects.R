@@ -10,7 +10,11 @@ assay_trademarks_all <- c("10X Visium Spatial Gene Expression")
 
 # c -----------------------------------------------------------------------
 
+choices_usage_status <- c("Unused" = "unused", "Used" = "used", "Used Up" = "used_up")
+
 # compute_var_list (see below due to dependencies)
+
+current_lab_orga_version <- list(major = 0L, minor = 4L, patch = 0L)
 
 # d -----------------------------------------------------------------------
 
@@ -149,6 +153,86 @@ data_variables <- list(
     },
     type = "required"
   ),
+  # comment raw data
+  comment_raw_data = list(
+    class = "character",
+    d_level = "raw_data",
+    descripton = c("A formless comment to provide additional information about the raw data."),
+    filter = FALSE,
+    label = "Comment:",
+    name = "comment_raw_data",
+    shiny_input = function(pref = NULL, selected = NULL, descr = TRUE, ...){
+
+      shiny::textInput(
+        inputId = stringr::str_c(pref, "comment_raw_data", sep = "_"),
+        label = "Comment:",
+        width = "100%",
+        value = selected
+      ) %>% htmlPopify(var = "comment_raw_data", descr = descr)
+
+    },
+    type = "optional"
+  ),
+  # comment tissue donor
+  comment_tissue_donor = list(
+    class = "character",
+    d_level = "tissue_donor",
+    descripton = c("A formless comment to provide additional information about the tissue donor."),
+    filter = FALSE,
+    label = "Comment:",
+    name = "comment_tissue_donor",
+    shiny_input = function(pref = NULL, selected = NULL, descr = TRUE, ...){
+
+      shiny::textInput(
+        inputId = stringr::str_c(pref, "comment_tissue_donor", sep = "_"),
+        label = "Comment:",
+        width = "100%",
+        value = selected
+      ) %>% htmlPopify(var = "comment_tissue_donor", descr = descr)
+
+    },
+    type = "optional"
+  ),
+  # comment tissue portion
+  comment_tissue_portion = list(
+    class = "character",
+    d_level = "tissue_portion",
+    descripton = c("A formless comment to provide additional information about the tissue portion."),
+    filter = FALSE,
+    label = "Comment:",
+    name = "comment_tissue_portion",
+    shiny_input = function(pref = NULL, nth, selected = NULL, descr = TRUE, ...){
+
+      shiny::textInput(
+        inputId = stringr::str_c(pref, "comment_tissue_portion", nth, sep = "_"),
+        label = "Comment:",
+        width = "100%",
+        value = selected
+      ) %>% htmlPopify(var = "comment_tissue_portion", descr = descr)
+
+    },
+    type = "optional"
+  ),
+  # comment tissue sample
+  comment_tissue_sample = list(
+    class = "character",
+    d_level = "tissue_sample",
+    descripton = c("A formless comment to provide additional information about the tissue sample"),
+    filter = FALSE,
+    label = "Comment:",
+    name = "comment_tissue_sample",
+    shiny_input = function(pref = NULL, selected = NULL, descr = TRUE, ...){
+
+      shiny::textInput(
+        inputId = stringr::str_c(pref, "comment_tissue_sample", sep = "_"),
+        label = "Comment:",
+        width = "100%",
+        value = selected
+      ) %>% htmlPopify(var = "comment_tissue_sample", descr = descr)
+
+    },
+    type = "optional"
+  ),
   # data of birth
   date_of_birth = list(
     class = "date",
@@ -173,7 +257,8 @@ data_variables <- list(
         inputId = stringr::str_c(pref, "date_of_birth", sep = "_"),
         label = "Date of Birth:",
         value = value,
-        startview = "year"
+        startview = "year",
+        width = "100%"
       ) %>%
         htmlPopify(var = "date_of_birth", descr = descr, placement = "right")
 
@@ -213,7 +298,8 @@ data_variables <- list(
           shiny::dateInput(
             inputId = stringr::str_c(pref, "date_of_creation", nth, sep = "_"),
             label = "Date of Creation:",
-            value = selected
+            value = selected,
+            width = "100%"
           ) %>%
             htmlPopify(var = "date_of_creation", descr = descr, placement = "right"),
           html
@@ -241,7 +327,8 @@ data_variables <- list(
           shiny::dateInput(
             inputId = stringr::str_c(pref, "date_of_extraction", sep = "_"),
             label = "Date of Extraction:",
-            value = selected
+            value = selected,
+            width = "100%"
           ) %>%
             htmlPopify(var = "date_of_extration", descr = descr, placement = "right"),
           shinyWidgets::actionBttn(
@@ -743,6 +830,52 @@ data_variables <- list(
     },
     type = "required"
   ),
+  surgeon = list(
+    class = "character",
+    d_level = "tissue_sample",
+    description = c("The surgeon who extracted the tissue sample."),
+    filter = TRUE,
+    label = "Surgeon:",
+    name = "surgeon",
+    shiny_input = function(pref = NULL, choices = NULL, selected = NULL, descr = TRUE, ...){
+
+      shiny::selectizeInput(
+        inputId = stringr::str_c(pref, "surgeon", sep = "_"),
+        label = "Surgeon:",
+        selected = selected,
+        choices = choices,
+        multiple = FALSE,
+        options = list(create = TRUE)
+      ) %>%
+        htmlPopify(var = "surgeon", descr = descr, placement = "right")
+
+    },
+    type = "optional"
+  ),
+  # storage localisation
+  storage_loc = list(
+    class = "character",
+    d_level = "tissue_portion",
+    description = c("The location where the tissue portion is currently stored."),
+    filter = TRUE,
+    label = "Storage Location:",
+    name = "storage_loc",
+    shiny_input = function(pref = NULL, nth, choices = NULL, selected = NULL, descr = TRUE, ...){
+
+      shiny::selectizeInput(
+        inputId = stringr::str_c(pref, "storage_loc", nth, sep = "_"),
+        label = "Storage Location:",
+        selected = selected,
+        choices = choices,
+        multiple = FALSE,
+        options = list(create = TRUE)
+      ) %>%
+        htmlPopify(var = "storage_loc", descr = descr, placement = "right")
+
+    },
+    type = "optional"
+  ),
+
   # storage mode
   storage_mode = list(
     class = "character",
@@ -777,7 +910,8 @@ data_variables <- list(
       shiny::numericInput(
         inputId = stringr::str_c(pref, "storage_size", nth, sep = "_"),
         label = "Size:",
-        value = selected
+        value = selected,
+        min = 0
       ) %>%
         htmlPopify(var = "storage_size", descr = descr, placement = "right")
 
@@ -835,13 +969,13 @@ data_variables <- list(
     filter = TRUE,
     label = "Usage Status:",
     name = "usage_status",
-    shiny_input = function(pref = NULL, selected = NULL, choices = NULL, descr = TRUE, ...){
+    shiny_input = function(pref = NULL, selected = NULL, descr = TRUE, ...){
 
       shiny::selectInput(
         inputId = stringr::str_c(pref, "usage_status", sep = "_"),
         label = "Usage Status:",
         selected = selected,
-        choices = choices,
+        choices = choices_usage_status,
         multiple = FALSE
       ) %>%
         htmlPopify(var = "usage_status", descr = descr, placement = "right")
@@ -851,8 +985,8 @@ data_variables <- list(
   ),
   # workgroup
   workgroup = list(
-    class = "factor",
-    d_level = "tissue_donor",
+    class = "character",
+    d_level = "tissue_sample",
     description = c("The working group that received and owns the tissue sample. (e.g. AG Heiland)"),
     filter = TRUE,
     label = "Workgroup:",
@@ -875,7 +1009,7 @@ data_variables <- list(
         htmlPopify(var = "workgroup", descr = descr, placement = "right")
 
     },
-    type = "id"
+    type = "required"
   )
 )
 
@@ -914,6 +1048,18 @@ first_name <- ", [A-Z]*\\." # only in combination with last name (adds ', ' to l
 
 # h -----------------------------------------------------------------------
 
+helper_content <- list(
+  project_name =
+    c("The name of the project. This value will be used as the folder name to store all project-related files and data."),
+  storage_directory =
+    c("The directory in which a new folder will be created. The new folder's name will be based on the project
+      name provided."),
+  subfolders =
+    c("Defines the criteria for creating subfolders to organize raw data. Useful for categorizing data based
+      on assay trademarks, organs, sex, anatomic locations, etc. For example, if assay trademark and organ are selected,
+      the function will create subfolders for each assay trademark, and within each of these assay trademark folders,
+      subfolders will be created for every organ.")
+)
 
 
 
@@ -921,22 +1067,35 @@ first_name <- ", [A-Z]*\\." # only in combination with last name (adds ', ' to l
 
 id_sep <- "."
 id_sep_count <- c(
-  "tissue_donor" = 3,
-  "tissue_sample" = 5,
-  "tissue_portion" = 6,
-  "raw_data" = 7
+  "tissue_donor" = 2,
+  "tissue_sample" = 4,
+  "tissue_portion" = 5,
+  "raw_data" = 6
   )
 id_sep_regex <- "\\."
 
 
 id_vars_list <-
-  list(
-    tissue_donor = c("institution", "workgroup", "donor_species", "donor_tag"),
-    tissue_sample = c("date_of_extraction", "sample_index"),
-    tissue_portion = c("portion_index"),
-    raw_data = c("raw_data_index")
-  )
+  purrr::map(
+    .x = data_levels,
+    .f = function(dl){
 
+      purrr::keep(
+        .x = data_variables,
+        .p = function(dv){
+
+          dv$type == "id" & dv$d_level == dl
+
+        }
+      ) %>%
+        base::names()
+
+    }
+  ) %>%
+  purrr::set_names(nm = data_levels)
+
+# do not change names or order of this vector
+# other functions depend on it
 id_vars_merged <- stringr::str_c("id_", data_levels, "_num")
 
 id_vars_vec <- purrr::flatten_chr(.x = id_vars_list)
@@ -1143,7 +1302,78 @@ required_vars_list <-
   ) %>%
   purrr::set_names(nm = data_levels)
 
-
+#' @title Repository Files
+#'
+#' @description A list of names and tests with which to refer to the `LabOrga`
+#' repository files.
+#'
+#' @details Currently, to be a valid `LabOrga` repository the folder must contain
+#' 7 files.
+#'
+#' **1. dlevel1_tissue_donor.RDS **
+#' The tissue donor table is a data.frame in which each row corresponds to a tissue
+#' donor from whom tissue samples have been extracted. It must contain the variables
+#' *institution*, *donor_species* and *donor_tag*.
+#'
+#' **2. dlevel2_tissue_sample.RDS **
+#' The tissue sample table is a data.frame in which each row corresponds to a
+#' tissue sample, a contiguous tissue sample or, in case of liquids, a tube.
+#' In addition to the ID variables from its tissue donor (merged in *id_tissue_donor_num*),
+#' with which tissue samples inherit all information of their respective tissue donor, the
+#' the table must contain the ID variables *date_of_extraction* and *sample_index*.
+#'
+#' **3. dlevel3_tissue_portion.RDS **
+#' The tissue portion table is a data.frame in which each row corresponds to
+#' a tissue portion, the unit in which tissue is stored in the lab after processing
+#' the tissue sample it derived from. In addition to the ID variables from its
+#' tissue sample (merged in *id_tissue_sample_num*), with which tissue portions
+#' inherit all information of their respective tissue sample, the table must contain
+#' the ID variable *portion_index*.
+#'
+#' ** 4. dlevel4_raw_data.RDS **
+#' The raw data table is a data.frame in which each row corresponds to the data output
+#' of an assay/experiment that was conducted with a tissue portion. In addition to the
+#' ID variables from the tissue portion with which the data was created (merged in
+#' *id_tissue_portion_num*), the table must contain the ID variable *raw_data_index* as
+#' well as the variables *link_raw_data* and *assay_trademark*.
+#'
+#' ** 5. logfile.RDS **
+#' The logfile is data.frame in which each row corresponds to a change made in the
+#' repository during a session within the `LabOrga` interface. This includes,
+#' adding, edditing and deleting data entries. It must contain the variables *username*,
+#' *fn_name* and *entry_id*.
+#'
+#' ** 6. setup.RDS **
+#' The setup file is a list in which information regarding the repository set up
+#' are stored.
+#'
+#' \itemize{
+#'  \item{*connected_with*:}{ A list of devices suffixed with an index. Each slot of this list corresponds to the output
+#'  of `Sys.info()` for the device that was connected to the repository.}
+#'  \item{*created_by*:}{ The output of `Sys.info()` fo rthe device that created the repository.}
+#'  \item{*created_at*:}{ The date time when the repository was created.}
+#'  \item{*version*:}{ A list of three slots named *major*, *minor* and *patch*. Used to keep track
+#'  if the installed version of `LabOrga` corresponds to the version of the repository.}
+#'  }
+#'
+#'
+#' ** 7. users.RDS**
+#' A data.frame in which each row corresponds to a user. In addition
+#' to the name (*username*) the variables *password* and *permission*
+#' must exist.
+#'
+#' @seealso [data_variables]
+#'
+#' @export
+repository_files <- list(
+  tissue_donor_table = list(name = "dlevel1_tissue_donor.RDS", test = base::is.data.frame),
+  tissue_sample_table = list(name = "dlevel2_tissue_sample.RDS", test = base::is.data.frame),
+  tissue_portion_table = list(name = "dlevel3_tissue_portion.RDS", test = base::is.data.frame),
+  raw_data_table = list(name = "dlevel4_raw_data.RDS", test = base::is.data.frame),
+  logfile = list(name = "logfile.RDS", test = base::is.data.frame),
+  setup = list(name = "setup.RDS", test = base::is.list),
+  users = list(name = "users.RDS", test = base::is.data.frame)
+)
 
 
 

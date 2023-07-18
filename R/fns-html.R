@@ -41,6 +41,22 @@ htmlActionButtonsBelowTables <- function(d_level){
 
 }
 
+htmlAddHelper <- function(shiny_tag,
+                          content,
+                          title = "What do I have to do here?",
+                          type = "inline",
+                          size = "s", ...){
+
+  shinyhelper::helper(
+    shiny_tag = shiny_tag,
+    content = content,
+    title = title,
+    size = size,
+    type = type,
+    ...
+  )
+
+}
 
 htmlAddRawData <- function(df){
 
@@ -131,12 +147,28 @@ htmlAddTissueDonor <- function(df){
 
   # in future: add Optional, clinical variables (comorbidities, treatment, survival etc.)
   # html_opt_input <- shiny::tagList(...)
+  html_opt_input <-
+    shiny::tagList(
+      htmlCol(
+        width = 4,
+        htmlHeadlineOptInput(d_level = "tissue_donor"),
+        purrr::map(
+          .x = optional_vars_list[["tissue_donor"]],
+          .f = ~ data_variables[[.x]][["shiny_input"]](
+            pref = "inp",
+            selected = NULL,
+            choices = process_choices(df[[.x]], action = "add", type = "optional")
+          )
+        )
+      )
+    )
 
   # output
   shiny::tagList(
     shiny::fluidRow(
       html_id_input,
-      html_req_input
+      html_req_input,
+      html_opt_input
     )
   )
 
@@ -174,6 +206,41 @@ htmlAddTissuePortion <- function(df, nth){
           nth = nth,
           choices = process_choices(df[["preparateur_tissue_portion"]], action = "add", type = "optional")
           )
+      )
+    )
+
+  html_opt_input <-
+    shiny::tagList(
+      htmlCol(
+        width = 6,
+        shiny::tagList(
+          htmlHeadlineOptInput(d_level = "tissue_portion"),
+          shiny::fluidRow(
+            htmlCol(
+              width = 6,
+              data_variables$storage_size$shiny_input(pref = "inp", nth = nth)
+            ),
+            htmlCol(
+              width = 6,
+              data_variables$storage_unit$shiny_input(pref = "inp", nth = nth)
+            )
+          )
+        ),
+        shiny::tagList(
+          htmlOrganizeInRows(
+            ncol = 2,
+            breaks = 0,
+            tag_list = purrr::map(
+              .x = confuns::vselect(optional_vars_list[["tissue_portion"]], -storage_size, -storage_unit),
+              .f = ~ data_variables[[.x]][["shiny_input"]](
+                pref = "inp",
+                selected = NULL,
+                choices = get_choices(df[[data_variables[[.x]]$name]]),
+                nth = nth
+              )
+            )
+          )
+        )
       )
     )
 
@@ -445,7 +512,7 @@ htmlFilterOptions <- function(df, suff = NULL){
               ) %>%
               htmlPopify(var = dvar$name)
 
-            width <- 3
+            #width <- 3
 
           } else if(dvar$class %in% c("date", "numeric")){
 
@@ -471,7 +538,7 @@ htmlFilterOptions <- function(df, suff = NULL){
               ) %>%
               htmlPopify(var = dvar$name)
 
-            width <- 12
+            #width <- 12
 
           }
 
@@ -490,7 +557,7 @@ htmlFilterOptions <- function(df, suff = NULL){
             )
 
           htmlCol(
-            width = width,
+            width = 12,
             filter_content,
             filter_opt
           )
@@ -508,7 +575,8 @@ htmlFilterOptions <- function(df, suff = NULL){
         select_inputs <-
           htmlOrganizeInRows(
             tag_list = confuns::lselect(html_list, dplyr::any_of(select_names)),
-            ncol = 4
+            ncol = 4,
+            breaks = 0
           )
 
         numeric_names <-
@@ -518,7 +586,8 @@ htmlFilterOptions <- function(df, suff = NULL){
         numeric_input <-
           htmlOrganizeInRows(
             tag_list = confuns::lselect(html_list, dplyr::any_of(numeric_names)),
-            ncol = 1
+            ncol = 1,
+            breaks = 0
           )
 
         shiny::tagList(
@@ -531,6 +600,7 @@ htmlFilterOptions <- function(df, suff = NULL){
       }
     ) %>%
     purrr::imap(
+      .x = .,
       .f = function(html, dl){
 
         shiny::tagList(
@@ -1001,6 +1071,97 @@ htmlModalAdjustments <- function(){
 
 }
 
+htmlModalConnectToRepository <- function(){
+
+  shiny::showModal(
+    ui = shiny::modalDialog(
+      title = "Repository Missing",
+      shiny::helpText(
+        "Your current set up of `LabOrga` is not connected to a repository.
+         By clicking on 'Connect to Repository' you are forwarded to the file system.
+         Choose the folder in which the repository exists you want to connect to or
+         an empty folder where a new repository is created."
+        ),
+      footer =  shiny::fluidRow(
+        htmlCol(width = 3, align = "center"),
+        htmlCol(
+          width = 6,
+          align = "center",
+          shinyFiles::shinyDirButton(
+            id = "connect_to_repo",
+            label = "Connect to Repository",
+            title = NULL
+          )
+        ),
+        htmlCol(width = 3, align = "center")
+      )
+    )
+  )
+
+}
+
+htmlModalDataEntryView <- function(df, id){
+
+  d_level <- get_d_level(df)
+
+  id_var <- id_vars_merged[dln(d_level)]
+
+  df_selected <-
+    dplyr::filter(df, !!rlang::sym(id_var) == {{id}}) %>%
+    dplyr::select(dplyr::any_of(base::names(data_variables)))
+
+
+  var_order <-
+    purrr::map_chr(data_variables[base::colnames(df_selected)], .f = ~ .x$label) %>%
+    base::order() %>%
+    base::unname()
+
+
+  shiny::showModal(
+    ui = shiny::modalDialog(
+      title = stringr::str_c(dlp(d_level, cap = TRUE), ": ", id),
+      htmlCol(
+        width = 12,
+        align = "left",
+        shiny::tagList(
+          purrr::map(
+            .x = base::colnames(df_selected)[var_order],
+            .f = function(cname){
+print(cname)
+              val <- df_selected[[cname]]
+
+              if(base::is.na(val) | base::is.null(val) | purrr::is_empty(val)){
+
+                x <- "missing"
+
+              } else {
+
+                x <- base::as.character(df_selected[[cname]])
+
+              }
+
+              x <- stringr::str_c(data_variables[[cname]][["label"]], " ", val, sep = "")
+
+              print(x)
+
+              shiny::fluidRow(
+                shiny::tags$p(x)
+              )
+
+            }
+          )
+        )
+      ),
+      footer = shiny::fluidRow(
+        htmlCol(width = 4),
+        htmlCol(width = 4, htmlButtonCloseModal()),
+        htmlCol(width = 4)
+      )
+    )
+  )
+
+}
+
 htmlModalDeleteEntry <- function(d_level, id){
 
   if(dln(d_level) != 4){
@@ -1122,6 +1283,35 @@ htmlModalHowToProceed <- function(d_level, # the current data level
           " {text2}",
           " Else click on 'Close' to return to the menu."
         )
+      )
+    )
+  )
+
+}
+
+htmlModalInvalidRepositoryFolder <- function(dir_to_repo){
+
+  shiny::showModal(
+    ui = shiny::modalDialog(
+      title = "Invalid Folder",
+      shiny::helpText(
+        glue::glue(
+          "The folder '{dir_to_repo}' is neither empty nor a valid
+                repository."
+        )
+      ),
+      footer = shiny::fluidRow(
+        htmlCol(width = 3, align = "center"),
+        htmlCol(
+          width = 6,
+          align = "center",
+          shinyFiles::shinyDirButton(
+            id = "connect_to_repo",
+            label = "Connect to Repository",
+            title = NULL
+          )
+        ),
+        htmlCol(width = 3, align = "center")
       )
     )
   )
@@ -1281,7 +1471,7 @@ htmlModalSelectRawData <- function(action = "add"){
 
 # O -----------------------------------------------------------------------
 
-htmlOrganizeInCols <- function(tag_list, width, spare = TRUE,  ...){
+htmlOrganizeInCols <- function(tag_list, width, spare = FALSE,  ...){
 
   if(base::length(width) == 1){
 
@@ -1289,7 +1479,7 @@ htmlOrganizeInCols <- function(tag_list, width, spare = TRUE,  ...){
 
     n <- 12 / width
 
-    width <- base::rep(width, n)
+    width <- base::rep(width, n)[base::seq_along(tag_list)]
 
   }
 
@@ -1305,20 +1495,18 @@ htmlOrganizeInCols <- function(tag_list, width, spare = TRUE,  ...){
 
   }
 
-  base::stopifnot(base::sum(width) == 12)
-
+  base::stopifnot(base::sum(width) <= 12)
 
   purrr::map2(
-    .x = tag_list,
-    .y = width,
-    .f = function(html, w){
+    .x = width,
+    .y = tag_list,
+    .f = function(w, tag, ...){
 
-      htmlCol(width = 2, html, ...)
+      htmlCol(width = w, tag, ...)
 
     }
   ) %>%
-    shiny::tagList() %>%
-    shiny::fluidRow()
+    shiny::tagList()
 
 }
 
@@ -1335,14 +1523,18 @@ htmlOrganizeInRows <- function(tag_list, ncol = 3, breaks = 1){
 
       # 1:4, 5:8, etc.
       selected_inputs <-
-        purrr::discard(tag_list[nth:(nth+ncol-1)], .p = base::is.null) %>%
-        shiny::tagList()
+        purrr::discard(tag_list[nth:(nth+ncol-1)], .p = base::is.null)
 
       # return tag list of up to four pickers in row
-
       shiny::tagList(
         shiny::fluidRow(htmlBreak(n = breaks)),
-        shiny::fluidRow(selected_inputs),
+        shiny::fluidRow(
+          htmlOrganizeInCols(
+            tag_list = selected_inputs,
+            width = 12/ncol,
+            spare = FALSE
+          )
+        ),
         shiny::fluidRow(htmlBreak(n = breaks))
       )
 

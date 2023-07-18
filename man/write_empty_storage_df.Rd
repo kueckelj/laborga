@@ -6,7 +6,7 @@
 \usage{
 write_empty_storage_df(
   d_level,
-  dir,
+  dir_repo = get_dir_repository(),
   overwrite = FALSE,
   verbose = TRUE,
   in_shiny = FALSE

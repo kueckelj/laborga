@@ -12,9 +12,17 @@ launchLabOrgaUI <- function(){
       shinydashboard::sidebarMenu(
         id = "sidebar",
         shinydashboard::menuItem(
-          text = "Overview",
-          tabName = "tab_overview",
-          selected = TRUE
+          text = "Repository",
+          tabName = "tab_repository",
+          selected = TRUE,
+          shinydashboard::menuSubItem(
+            text = "Stats",
+            tabName = "tab_stats"
+          ),
+          shinydashboard::menuSubItem(
+            text = "Configuration",
+            tabName = "tab_configuration"
+          )
         ),
         shinydashboard::menuItem(
           text = "Tables",
@@ -29,8 +37,8 @@ launchLabOrgaUI <- function(){
             )
           )
         ),
-        shinydashboard::menuItem(text = "Projects",  tabName = "tab_projects"),#,
-        shiny::actionButton("test", label = "Test"),
+        shinydashboard::menuItem(text = "Downloads",  tabName = "tab_downloads"),#,
+        #shiny::actionButton("test", label = "Test"),
         shiny::column(
           width = 12,
           align = "left",
@@ -54,15 +62,16 @@ launchLabOrgaUI <- function(){
       shinydashboard::tabItems(
 
         shinydashboard::tabItem(
-          tabName = "tab_overview",
+          tabName = "tab_stats",
           shiny::fluidRow(
-            htmlCol(
-              width = 12,
-              shiny::tags$h1("Overview")
-              )
+            shinydashboard::valueBoxOutput(outputId = "vb_users", width = 2),
+            shinydashboard::valueBoxOutput(outputId = "vb_devices", width = 2),
+            shinydashboard::valueBoxOutput(outputId = "vb_tissue_donor", width = 2),
+            shinydashboard::valueBoxOutput(outputId = "vb_tissue_sample", width = 2),
+            shinydashboard::valueBoxOutput(outputId = "vb_tissue_portion", width = 2),
+            shinydashboard::valueBoxOutput(outputId = "vb_raw_data", width = 2)
           )
         ),
-
         shinydashboard::tabItem(
           tabName = "tab_actions",
           htmlContainer(
@@ -94,76 +103,89 @@ launchLabOrgaUI <- function(){
             )
           )
         ),
+
         shinydashboard::tabItem(
           tabName = "tab_all_tissue_donor",
-          shinyWidgets::dropdown(
-            label = "Filter Options:",
-            icon = shiny::icon("sliders"),
-            status = "primary",
-            circle = FALSE,
-            shiny::uiOutput(outputId = "filter_table_all_tissue_donor")
-          ),
-          htmlBreak(1),
-          htmlContainer(
-            DT::dataTableOutput(outputId = "table_all_tissue_donor")
-          ),
-          htmlContainer(
-            htmlActionButtonsBelowTables(d_level = "tissue_donor")
+          shinydashboard::box(
+            width = 12,
+            shinyWidgets::dropdown(
+              label = "Filter Options:",
+              icon = shiny::icon("sliders"),
+              status = "primary",
+              circle = FALSE,
+              shiny::uiOutput(outputId = "filter_table_all_tissue_donor")
+            ),
+            htmlBreak(1),
+            htmlContainer(
+              DT::dataTableOutput(outputId = "table_all_tissue_donor")
+            ),
+            htmlContainer(
+              htmlActionButtonsBelowTables(d_level = "tissue_donor")
+            )
           )
         ),
         shinydashboard::tabItem(
           tabName = "tab_all_tissue_sample",
-          shinyWidgets::dropdown(
-            label = "Filter Options:",
-            icon = shiny::icon("sliders"),
-            status = "primary",
-            circle = FALSE,
-            shiny::uiOutput(outputId = "filter_table_all_tissue_sample")
-          ),
-          htmlBreak(1),
-          htmlContainer(
-            DT::dataTableOutput(outputId = "table_all_tissue_sample")
-          ),
-          htmlContainer(
-            htmlActionButtonsBelowTables(d_level = "tissue_sample")
+          shinydashboard::box(
+            width = 12,
+            shinyWidgets::dropdown(
+              label = "Filter Options:",
+              icon = shiny::icon("sliders"),
+              status = "primary",
+              circle = FALSE,
+              shiny::uiOutput(outputId = "filter_table_all_tissue_sample")
+            ),
+            htmlBreak(1),
+            htmlContainer(
+              DT::dataTableOutput(outputId = "table_all_tissue_sample")
+            ),
+            htmlContainer(
+              htmlActionButtonsBelowTables(d_level = "tissue_sample")
+            )
           )
         ),
         shinydashboard::tabItem(
           tabName = "tab_all_tissue_portion",
-          shinyWidgets::dropdown(
-            label = "Filter Options:",
-            icon = shiny::icon("sliders"),
-            status = "primary",
-            circle = FALSE,
-            shiny::uiOutput(outputId = "filter_table_all_tissue_portion")
-          ),
-          htmlBreak(1),
-          htmlContainer(
-            DT::dataTableOutput(outputId = "table_all_tissue_portion")
-          ),
-          htmlContainer(
-            htmlActionButtonsBelowTables(d_level = "tissue_portion")
+          shinydashboard::box(
+            width = 12,
+            shinyWidgets::dropdown(
+              label = "Filter Options:",
+              icon = shiny::icon("sliders"),
+              status = "primary",
+              circle = FALSE,
+              shiny::uiOutput(outputId = "filter_table_all_tissue_portion")
+            ),
+            htmlBreak(1),
+            htmlContainer(
+              DT::dataTableOutput(outputId = "table_all_tissue_portion")
+            ),
+            htmlContainer(
+              htmlActionButtonsBelowTables(d_level = "tissue_portion")
+            )
           )
         ),
         shinydashboard::tabItem(
           tabName = "tab_all_raw_data",
-          shinyWidgets::dropdown(
-            label = "Filter Options:",
-            icon = shiny::icon("sliders"),
-            status = "primary",
-            circle = FALSE,
-            shiny::uiOutput(outputId = "filter_table_all_raw_data")
-          ),
-          htmlBreak(1),
-          htmlContainer(
-            DT::dataTableOutput(outputId = "table_all_raw_data")
-          ),
-          htmlContainer(
-            htmlActionButtonsBelowTables(d_level = "raw_data")
+          shinydashboard::box(
+            width = 12,
+            shinyWidgets::dropdown(
+              label = "Filter Options:",
+              icon = shiny::icon("sliders"),
+              status = "primary",
+              circle = FALSE,
+              shiny::uiOutput(outputId = "filter_table_all_raw_data")
+            ),
+            htmlBreak(1),
+            htmlContainer(
+              DT::dataTableOutput(outputId = "table_all_raw_data")
+            ),
+            htmlContainer(
+              htmlActionButtonsBelowTables(d_level = "raw_data")
+            )
           )
         ),
         shinydashboard::tabItem(
-          tabName = "tab_projects",
+          tabName = "tab_downloads",
           shiny::fluidRow(
             htmlCol(
               width = 8,
@@ -178,7 +200,8 @@ launchLabOrgaUI <- function(){
                     htmlCol(
                       width = 4,
                       align = "left",
-                      htmlH5("Project Name:"),
+                      htmlH5("Project Name:") %>%
+                        htmlAddHelper(content = helper_content$project_name),
                       shiny::textInput(
                         inputId = "project_name",
                         label = NULL,
@@ -188,7 +211,8 @@ launchLabOrgaUI <- function(){
                     htmlCol(
                       width = 3,
                       align = "left",
-                      htmlH5("Storage Folder:"),
+                      htmlH5("Storage Directory:") %>%
+                        htmlAddHelper(content = helper_content$storage_directory),
                       shinyFiles::shinyDirButton(
                         id = "choose_storage_folder",
                         label = "Choose",
@@ -215,7 +239,7 @@ launchLabOrgaUI <- function(){
                                     ),
                         selected = c("assay_trademark"),
                         multiple = TRUE
-                      )
+                      ) %>% htmlAddHelper(content = helper_content$subfolders)
                     ),
                     htmlCol(
                       width = 9,
@@ -225,57 +249,51 @@ launchLabOrgaUI <- function(){
                   )
                 )
               ),
-              htmlContainer(
+              shinydashboard::box(
                 width = 12,
+                title = "Data Available:",
+                collapsible = TRUE,
                 shinyWidgets::dropdown(
                   label = "Filter Options:",
                   icon = shiny::icon("sliders"),
                   status = "primary",
                   circle = FALSE,
-                  shiny::uiOutput(outputId = "filter_table_all_raw_data_projects")
+                  shiny::uiOutput(outputId = "filter_table_all_raw_data_downloads")
                 ),
-                htmlBreak(1)
-              ),
-              shinydashboard::box(
-                width = 12,
-                title = "Data Available:",
-                collapsible = TRUE,
-                htmlCol(
-                  width = 12,
-                  DT::dataTableOutput(outputId = "table_all_raw_data_projects"),
-                  shiny::fluidRow(
-                    htmlCol(
-                      width = 4,
-                      htmlMediumButton(
-                        inputId = "add_selected_to_project",
-                        label = "Add Selected",
-                        text =
-                          c("Adds the selected data entries to the project. If successfull",
-                            " they appear in the list on the right. (Selected entries that",
-                            " have already been added are not added again.)"
-                          )
-                      )
-                    ),
-                    htmlCol(
-                      width = 4,
-                      htmlMediumButton(
-                        inputId = "add_all_to_project",
-                        label = "Add All",
-                        text =
-                          c("Adds all data entries from the current table displayed. Use 'Filter Options'",
-                            "to subset the table according to your goals. If successfull,",
-                            "added entries appear in the list on the right. (Selected entries that",
-                            "have already been added are not added again.)"
-                          ),
-                        placement = "top"
-                      )
-                    ),
-                    htmlCol(
-                      width = 4,
-                      htmlMediumButton(inputId = "view_added_to_project", label = "View")
+                htmlBreak(1),
+                DT::dataTableOutput(outputId = "table_all_raw_data_projects"),
+                shiny::fluidRow(
+                  htmlCol(
+                    width = 4,
+                    htmlMediumButton(
+                      inputId = "add_selected_to_project",
+                      label = "Add Selected",
+                      text =
+                        c("Adds the selected data entries to the project. If successfull",
+                          " they appear in the list on the right. (Selected entries that",
+                          " have already been added are not added again.)"
+                        )
                     )
+                  ),
+                  htmlCol(
+                    width = 4,
+                    htmlMediumButton(
+                      inputId = "add_all_to_project",
+                      label = "Add All",
+                      text =
+                        c("Adds all data entries from the current table displayed. Use 'Filter Options'",
+                          "to subset the table according to your goals. If successfull,",
+                          "added entries appear in the list on the right. (Selected entries that",
+                          "have already been added are not added again.)"
+                        ),
+                      placement = "top"
+                    )
+                  ),
+                  htmlCol(
+                    width = 4,
+                    htmlMediumButton(inputId = "download_selected", label = "Quick Download")
                   )
-              )
+                )
               )
             ),
             htmlCol(

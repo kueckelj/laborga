@@ -1,6 +1,6 @@
 Package: laborga
 Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9000
+Version: 0.3.0
 Authors@R: 
     person("Jan", "Kueckelhaus", , "jan.kueckelhaus@uniklinik-freiburg.de", role = c("aut", "cre"),
            comment = c(ORCID = "YOUR-ORCID-ID"))

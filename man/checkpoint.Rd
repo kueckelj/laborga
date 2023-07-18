@@ -7,9 +7,15 @@
 checkpoint(
   evaluate = TRUE,
   case_false = NULL,
-  error_notifications = list(invalid_project_dir = "The storage directory is invalid.",
+  error_notifications = list(invalid_password =
+    "The password must only contain letters, numbers, !, ?, _ or -.", invalid_project_dir
+    = "The storage directory is invalid.", invalid_username =
+    "Username must not contain anything else than letters and empty space.",
     no_entry_selected = "Please select a row in the table.", no_project_ids =
-    "Please add at least one data entry.", zero_tissue_portions =
+    "Please add at least one data entry.", non_matching_passwords =
+    "Passwords must be identical.", username_taken = "Username is already taken.",
+    username_unknown = "Username is unknown.", 
+     zero_tissue_portions =
     "Number of tissue portions to add must not be 0."),
   warning_notifications = list(),
   duration = 4,

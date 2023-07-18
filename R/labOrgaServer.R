@@ -2,33 +2,33 @@
 
 launchLabOrgaServer <- function(input, output, session){
 
+  # shiny add ons
+  shinyhelper::observe_helpers()
 
-# login -------------------------------------------------------------------
-
-
-
-# ui matches --------------------------------------------------------------
-
-  shinyFiles::shinyDirChoose(
-    input = input,
-    id = "choose_storage_folder",
-    roots = shinyFiles::getVolumes()()
-  )
-
-# steady values -----------------------------------------------------------
+  # steady values -----------------------------------------------------------
 
   save_tables <- TRUE
 
-  storage_df_empty <- get_storage_df_empty(d_level = base::length(data_levels))
+  # repo connection ---------------------------------------------------------
 
-# reactive values ---------------------------------------------------------
+  # option for ignoreInit = FALSE, to prevent crashes if no repository is connected
+  if(!is_connected()){
+
+    htmlModalConnectToRepository()
+
+    ignoreInit <- TRUE
+
+  } else {
+
+    out <- compare_versions(in_shiny = TRUE)
+
+    ignoreInit <- out != 0
+
+  }
+
+  # reactive values ---------------------------------------------------------
 
   active_d_level <- shiny::reactiveVal(value = "")
-
-  df_tissue_donor <- shiny::reactiveVal(value = load_storage_df("tissue_donor"))
-  df_tissue_sample <- shiny::reactiveVal(value = load_storage_df("tissue_sample"))
-  df_tissue_portion <- shiny::reactiveVal(value = load_storage_df("tissue_portion"))
-  df_raw_data <- shiny::reactiveVal(value = load_storage_df("raw_data"))
 
   invalid_password <- shiny::reactiveVal(value = FALSE)
 
@@ -39,8 +39,56 @@ launchLabOrgaServer <- function(input, output, session){
   selected_tissue_portion <- shiny::reactiveVal(value = "")
   selected_raw_data <- shiny::reactiveVal(value = "")
 
+  update_data <- shiny::reactiveVal(value = 0)
   user <- shiny::reactiveVal(value = NULL)
-  users_df <- shiny::reactiveVal(value = load_users_df())
+
+  if(is_connected()){
+
+    df_tissue_donor <- shiny::reactiveVal(value = load_storage_df("tissue_donor"))
+    df_tissue_sample <- shiny::reactiveVal(value = load_storage_df("tissue_sample"))
+    df_tissue_portion <- shiny::reactiveVal(value = load_storage_df("tissue_portion"))
+    df_raw_data <- shiny::reactiveVal(value = load_storage_df("raw_data"))
+    repo_setup <- shiny::reactiveVal(value = list())
+    users_df <- shiny::reactiveVal(value = load_users_df())
+
+  } else {
+
+    df_tissue_donor <- shiny::reactiveVal(value = create_empty_storage_df("tissue_donor"))
+    df_tissue_sample <- shiny::reactiveVal(value = create_empty_storage_df("tissue_sample"))
+    df_tissue_portion <- shiny::reactiveVal(value = create_empty_storage_df("tissue_portion"))
+    df_raw_data <- shiny::reactiveVal(value = create_empty_storage_df("raw_data"))
+    repo_setup <- shiny::reactiveVal(value = list())
+    users_df <- shiny::reactiveVal(value = create_empty_users_df())
+
+  }
+
+
+
+# login -------------------------------------------------------------------
+
+  # start app with login modal
+  oe <- shiny::observeEvent(input$nothing, {
+
+    user(users_df()[1,])
+
+    #htmlModalLogIn(users_df = users_df())
+
+  }, ignoreInit = ignoreInit, ignoreNULL = FALSE)
+
+
+# ui matches --------------------------------------------------------------
+
+  shinyFiles::shinyDirChoose(
+    input = input,
+    id = "connect_to_repo",
+    roots = shinyFiles::getVolumes()()
+  )
+
+  shinyFiles::shinyDirChoose(
+    input = input,
+    id = "choose_storage_folder",
+    roots = shinyFiles::getVolumes()()
+  )
 
 
 # render UI ---------------------------------------------------------------
@@ -90,6 +138,13 @@ launchLabOrgaServer <- function(input, output, session){
 
   output$filter_table_all_tissue_donor <- shiny::renderUI({
 
+    shiny::validate(
+      shiny::need(
+        expr = base::nrow(df_tissue_donor()) >= 1,
+        message = "No tissue donors added."
+      )
+    )
+
     input$reset_filter_tissue_donor
 
     htmlFilterOptions(df = complete_df_tissue_donor())
@@ -97,6 +152,13 @@ launchLabOrgaServer <- function(input, output, session){
   })
 
   output$filter_table_all_tissue_sample <- shiny::renderUI({
+
+    shiny::validate(
+      shiny::need(
+        expr = base::nrow(df_tissue_sample()) >= 1,
+        message = "No tissue samples added."
+      )
+    )
 
     input$reset_filter_tissue_sample
 
@@ -106,6 +168,13 @@ launchLabOrgaServer <- function(input, output, session){
 
   output$filter_table_all_tissue_portion <- shiny::renderUI({
 
+    shiny::validate(
+      shiny::need(
+        expr = base::nrow(df_tissue_portion()) >= 1,
+        message = "No tissue portions added."
+      )
+    )
+
     input$reset_filter_tissue_portion
 
     htmlFilterOptions(df = complete_df_tissue_portion())
@@ -114,13 +183,27 @@ launchLabOrgaServer <- function(input, output, session){
 
   output$filter_table_all_raw_data <- shiny::renderUI({
 
+    shiny::validate(
+      shiny::need(
+        expr = base::nrow(df_raw_data()) >= 1,
+        message = "No raw data added."
+      )
+    )
+
     input$reset_filter_raw_data
 
     htmlFilterOptions(df = complete_df_raw_data())
 
   })
 
-  output$filter_table_all_raw_data_projects <- shiny::renderUI({
+  output$filter_table_all_raw_data_downloads <- shiny::renderUI({
+
+    shiny::validate(
+      shiny::need(
+        expr = base::nrow(complete_df_raw_data()) >= 1,
+        message = "No raw data added."
+      )
+    )
 
     input$reset_filter_raw_data_projects
 
@@ -151,14 +234,30 @@ launchLabOrgaServer <- function(input, output, session){
 
   output$inp_workgroup <- shiny::renderUI({
 
-    workgroups <-
-      dplyr::filter(df_tissue_donor(), institution == input$inp_institution) %>%
-      dplyr::pull(workgroup) %>%
-      base::unique()
+    print(complete_df_tissue_sample())
+
+    if(base::nrow(complete_df_tissue_sample()) >= 1){
+
+      sel_inst <-
+        complete_df_tissue_donor() %>%
+        dplyr::filter(id_tissue_donor_num == selected_tissue_donor()) %>%
+        dplyr::pull(institution)
+
+      workgroups <-
+        dplyr::filter(complete_df_tissue_sample(), institution == {{sel_inst}}) %>%
+        dplyr::pull(workgroup) %>%
+        c(., "unknown", "") %>%
+        base::unique()
+
+    } else {
+
+      workgroups <- c("", "unknown")
+
+    }
 
     data_variables$workgroup$shiny_uiOutput(
       pref = "inp",
-      selected = NULL,
+      selected = "",
       choices = workgroups
     )
 
@@ -231,6 +330,12 @@ launchLabOrgaServer <- function(input, output, session){
     complete_df_raw_data() %>%
       dplyr::filter(id_raw_data_num %in% {{p_ids}}) %>%
       dplyr::select(id_raw_data_num, assay_trademark)
+
+  })
+
+  dir_to_repo <- shiny::reactive({
+
+    combine_path(input$connect_to_repo)
 
   })
 
@@ -513,6 +618,67 @@ launchLabOrgaServer <- function(input, output, session){
 
 # observe events ----------------------------------------------------------
 
+  # view tissue donor
+  oe <- shiny::observeEvent(input$view_tissue_donor_bt, {
+
+    checkpoint(
+      evaluate = !purrr::is_empty(selected_tissue_donor()),
+      case_false = "no_entry_selected"
+    )
+
+    htmlModalDataEntryView(
+      df = df_tissue_donor(),
+      id = selected_tissue_donor()
+    )
+
+  })
+
+  # view tissue donor
+  oe <- shiny::observeEvent(input$view_tissue_sample_bt, {
+
+    checkpoint(
+      evaluate = !purrr::is_empty(selected_tissue_sample()),
+      case_false = "no_entry_selected"
+    )
+
+    htmlModalDataEntryView(
+      df = df_tissue_sample(),
+      id = selected_tissue_sample()
+    )
+
+  })
+
+  # view tissue portion
+  oe <- shiny::observeEvent(input$view_tissue_portion_bt, {
+
+    checkpoint(
+      evaluate = !purrr::is_empty(selected_tissue_portion()),
+      case_false = "no_entry_selected"
+    )
+
+    htmlModalDataEntryView(
+      df = df_tissue_portion(),
+      id = selected_tissue_portion()
+    )
+
+  })
+
+  # view tissue portion
+  oe <- shiny::observeEvent(input$view_raw_data_bt, {
+
+    checkpoint(
+      evaluate = !purrr::is_empty(selected_raw_data()),
+      case_false = "no_entry_selected"
+    )
+
+    htmlModalDataEntryView(
+      df = df_raw_data(),
+      id = selected_raw_data()
+    )
+
+  })
+
+
   # delete tissue donor
   oe <- shiny::observeEvent(input$delete_tissue_donor_bt, {
 
@@ -530,12 +696,18 @@ launchLabOrgaServer <- function(input, output, session){
 
   oe <- shiny::observeEvent(input$delete_tissue_donor_confirm, {
 
-    delete_entries(id = selected_tissue_donor(), in_shiny = TRUE)
+    delete_entries(
+      id = selected_tissue_donor(),
+      in_shiny = TRUE,
+      username = user()$username
+      )
 
     df_tissue_donor(load_storage_df("tissue_donor"))
     df_tissue_sample(load_storage_df("tissue_sample"))
     df_tissue_portion(load_storage_df("tissue_portion"))
     df_raw_data(load_storage_df("raw_data"))
+
+    shiny::removeModal()
 
   })
 
@@ -556,11 +728,17 @@ launchLabOrgaServer <- function(input, output, session){
 
   oe <- shiny::observeEvent(input$delete_tissue_sample_confirm, {
 
-    delete_entries(id = selected_tissue_sample(), in_shiny = TRUE)
+    delete_entries(
+      id = selected_tissue_sample(),
+      in_shiny = TRUE,
+      username = user()$username
+      )
 
     df_tissue_sample(load_storage_df("tissue_sample"))
     df_tissue_portion(load_storage_df("tissue_portion"))
     df_raw_data(load_storage_df("raw_data"))
+
+    shiny::removeModal()
 
   })
 
@@ -581,10 +759,16 @@ launchLabOrgaServer <- function(input, output, session){
 
   oe <- shiny::observeEvent(input$delete_tissue_portion_confirm, {
 
-    delete_entries(id = selected_tissue_portion(), in_shiny = TRUE)
+    delete_entries(
+      id = selected_tissue_portion(),
+      in_shiny = TRUE,
+      username = user()$username
+      )
 
     df_tissue_portion(load_storage_df("tissue_portion"))
     df_raw_data(load_storage_df("raw_data"))
+
+    shiny::removeModal()
 
   })
 
@@ -605,13 +789,17 @@ launchLabOrgaServer <- function(input, output, session){
 
   oe <- shiny::observeEvent(input$delete_raw_data_confirm, {
 
-    delete_entries(id = selected_raw_data(), in_shiny = TRUE)
+    delete_entries(
+      id = selected_raw_data(),
+      in_shiny = TRUE,
+      username = user()$username
+      )
 
     df_raw_data(load_storage_df("raw_data"))
 
+    shiny::removeModal()
+
   })
-
-
 
   oe <- shiny::observeEvent(c(input$add_tissue_donor, input$add_tissue_donor_bt), {
 
@@ -716,7 +904,8 @@ launchLabOrgaServer <- function(input, output, session){
         input_info_vars = input_tissue_donor()$info,
         prev_id_merged = NULL, # no prev id at data level 1
         save = save_tables, # overwrites the data file on the harddrive
-        in_shiny = TRUE
+        in_shiny = TRUE,
+        username = user()$username
       )
 
     new_ids <- out[["id_tissue_donor_num"]]
@@ -744,7 +933,8 @@ launchLabOrgaServer <- function(input, output, session){
         input_info_vars = input_tissue_sample()$info,
         prev_id_merged = selected_tissue_donor(),
         save = save_tables, # overwrites the data file on the harddrive
-        in_shiny = TRUE
+        in_shiny = TRUE,
+        username = user()$username
       )
 
     new_ids <- out[["id_tissue_sample_num"]]
@@ -823,6 +1013,8 @@ launchLabOrgaServer <- function(input, output, session){
       in_shiny = TRUE
     )
 
+    print(input_tissue_portion())
+
     for(i in base::seq_along(input_tissue_portion())){
 
       old_ids <- df_tissue_portion()[["id_tissue_portion_num"]]
@@ -834,7 +1026,8 @@ launchLabOrgaServer <- function(input, output, session){
           input_info_vars = input_tissue_portion()[[i]]$info,
           prev_id_merged = selected_tissue_sample(),
           save = save_tables, # overwrites the data file on the harddrive
-          in_shiny = TRUE
+          in_shiny = TRUE,
+          username = user()$username
         )
 
       new_ids <- out[["id_tissue_portion_num"]]
@@ -863,7 +1056,8 @@ launchLabOrgaServer <- function(input, output, session){
       input_info_vars = input_raw_data()$info,
       prev_id_merged = selected_tissue_portion(),
       save = save_tables, # overwrites the data file on the harddrive
-      in_shiny = TRUE
+      in_shiny = TRUE,
+      username = user()$username
     )
 
     htmlModalHowToProceed(
@@ -949,21 +1143,21 @@ launchLabOrgaServer <- function(input, output, session){
         footer = htmlFooterForEditModals(d_level = "tissue_donor"),
         htmlContainer(
           htmlOrganizeInRows(
-            shiny::tagList(
+            tag_list =
               purrr::map(
                 .x = purrr::discard(
                   .x = data_variables[get_info_vars("tissue_donor")],
                   .p = ~ base::is.null(.x$shiny_input)
-                  ),
+                ),
                 .f = ~
                   .x$shiny_input(
                     pref = "ed",
                     selected = entry[[.x$name]],
                     choices = process_choices(x = df_tissue_donor()[[.x$name]], action = "edit")
-                  ) %>% htmlCol(width = 4)
-              )
-            ),
-            ncol = 3
+                  )
+              ),
+            ncol = 3,
+            breaks = 0
           )
         )
       )
@@ -991,21 +1185,21 @@ launchLabOrgaServer <- function(input, output, session){
         footer = htmlFooterForEditModals(d_level = "tissue_sample"),
         htmlContainer(
           htmlOrganizeInRows(
-            shiny::tagList(
+            tag_list =
               purrr::map(
                 .x = purrr::discard(
                   .x = data_variables[get_info_vars("tissue_sample")],
                   .p = ~ base::is.null(.x$shiny_input)
-                  ),
+                ),
                 .f = ~
                   .x$shiny_input(
                     pref = "ed",
                     selected = entry[[.x$name]],
                     choices = process_choices(x = df_tissue_sample()[[.x$name]], action = "edit")
                   )
-              )
-            ),
-            ncol = 3
+              ),
+            ncol = 3,
+            breaks = 0
           )
         )
       )
@@ -1033,12 +1227,12 @@ launchLabOrgaServer <- function(input, output, session){
         footer = htmlFooterForEditModals(d_level = "tissue_portion"),
         htmlContainer(
           htmlOrganizeInRows(
-            tag_list = shiny::tagList(
+            tag_list =
               purrr::map(
                 .x = purrr::discard(
                   .x = data_variables[get_info_vars("tissue_portion")],
                   .p = ~ base::is.null(.x$shiny_input)
-                  ),
+                ),
                 .f = ~
                   .x$shiny_input(
                     pref = "ed",
@@ -1046,9 +1240,9 @@ launchLabOrgaServer <- function(input, output, session){
                     selected = entry[[.x$name]],
                     choices = process_choices(x = df_tissue_portion()[[.x$name]], action = "edit")
                   )
-              )
-            ),
-            ncol = 3
+              ),
+            ncol = 3,
+            breaks = 0
 
           )
         )
@@ -1077,21 +1271,21 @@ launchLabOrgaServer <- function(input, output, session){
         footer = htmlFooterForEditModals(d_level = "raw_data"),
         htmlContainer(
           htmlOrganizeInRows(
-            shiny::tagList(
+            tag_list =
               purrr::map(
                 .x = purrr::discard(
                   .x = data_variables[get_info_vars("raw_data")],
                   .p = ~ base::is.null(.x$shiny_input)
-                  ),
+                ),
                 .f = ~
                   .x$shiny_input(
                     pref = "ed",
                     selected = entry[[.x$name]],
                     choices = process_choices(x = df_raw_data()[[.x$name]], action = "edit")
                   )
-              )
-            ),
-            ncol = 3
+              ),
+            ncol = 3,
+            breaks = 0
           )
         )
       )
@@ -1107,7 +1301,8 @@ launchLabOrgaServer <- function(input, output, session){
         selected_id = selected_tissue_donor(),
         input_info_vars = shiny::isolate(edit_data_vars()),
         save = save_tables, # overwrites the data file on the harddrive
-        in_shiny = TRUE
+        in_shiny = TRUE,
+        username = user()$username
       )
 
     df_tissue_donor(out)
@@ -1124,7 +1319,8 @@ launchLabOrgaServer <- function(input, output, session){
         selected_id = shiny::isolate(selected_tissue_sample()),
         input_info_vars = shiny::isolate(edit_data_vars()),
         save = save_tables, # overwrites the data file on the harddrive
-        in_shiny = TRUE
+        in_shiny = TRUE,
+        username = user()$username
       )
 
     df_tissue_sample(out)
@@ -1141,7 +1337,8 @@ launchLabOrgaServer <- function(input, output, session){
         selected_id = shiny::isolate(selected_tissue_portion()),
         input_info_vars = shiny::isolate(edit_data_vars()),
         save = save_tables, # overwrites the data file on the harddrive
-        in_shiny = TRUE
+        in_shiny = TRUE,
+        username = user()$username
       )
 
     df_tissue_portion(out)
@@ -1158,7 +1355,8 @@ launchLabOrgaServer <- function(input, output, session){
         selected_id = selected_raw_data(),
         input_info_vars = shiny::isolate(edit_data_vars()),
         save = save_tables, # overwrites the data file on the harddrive
-        in_shiny = TRUE
+        in_shiny = TRUE,
+        username = user()$username
       )
 
     df_raw_data(out)
@@ -1419,7 +1617,7 @@ launchLabOrgaServer <- function(input, output, session){
     }
 
     # save information
-    readr::write_csv(x = df_prep, file = stringr::str_c(project_dir(), "\\raw_data_table.csv") )
+    readr::write_csv(x = df_prep, file = stringr::str_c(project_dir(), "/raw_data_table.csv") )
 
     # write .txt file about process using feedback lists
     # ...
@@ -1441,6 +1639,8 @@ launchLabOrgaServer <- function(input, output, session){
     )
 
   })
+
+  ### oe: user/login
 
   oe <- shiny::observeEvent(input$login, {
 
@@ -1506,7 +1706,8 @@ launchLabOrgaServer <- function(input, output, session){
       list(
         username = input$new_username,
         password = sodium::password_store(input$new_password1),
-        permissions = base::factor("standard")
+        permissions = base::factor("standard"),
+        created = base::Sys.time()
       )
 
     new_users_df <- dplyr::add_row(.data = users_df(), !!!new_credentials)
@@ -1542,15 +1743,94 @@ launchLabOrgaServer <- function(input, output, session){
 
   })
 
+  ### oe: repository connection
+
+  oe <- shiny::observeEvent(dir_to_repo(), {
+
+    if(is_repository(dir_to_repo())){
+
+      connect_lab_orga(dir_repo = dir_to_repo(), verbose = TRUE, in_shiny = TRUE)
+
+      shiny::removeModal()
+
+      shinyWidgets::sendSweetAlert(
+        title = "Repository connected",
+        text = glue::glue("Successfully connected to a LabOrga repository '{dir_to_repo()}'."),
+        type = "success"
+      )
+
+      # reload data.frames that depend on the repository
+      df_tissue_donor(load_storage_df(d_level = "tissue_donor"))
+      df_tissue_sample(load_storage_df(d_level = "tissue_sample"))
+      df_tissue_portion(load_storage_df(d_level = "tissue_portion"))
+      df_raw_data(load_storage_df(d_level = "raw_data"))
+      repo_setup(load_repo_setup())
+      users_df(load_users_df())
+
+      htmlModalLogIn(users_df = users_df())
+
+    } else {
+
+      dirs_in_folder <-
+        base::list.files(path = dir_to_repo())
+
+      empty_folder <- base::length(dirs_in_folder) == 0
+
+      if(base::isTRUE(empty_folder)){
+
+        create_repository(
+          dir_repo = dir_to_repo(),
+          overwrite = TRUE,
+          in_shiny = TRUE,
+          verbose = FALSE
+        )
+
+        shiny::removeModal()
+
+        shinyWidgets::sendSweetAlert(
+          title = "Repository created",
+          text = glue::glue("Successfully created a LabOrga repository in '{dir_to_repo()}'."),
+          type = "success"
+        )
+
+      } else {
+
+        shiny::removeModal()
+
+        htmlModalInvalidRepositoryFolder(dir_to_repo = dir_to_repo())
+
+      }
+
+    }
+
+  })
+
+
+  # update repository data
+  oe <- shiny::observeEvent(input$update_repo, {
+
+    update_repository(in_shiny = TRUE, verbose = TRUE)
+
+    # reload data.frames that depend on the repository
+    df_tissue_donor(load_storage_df(d_level = "tissue_donor"))
+    df_tissue_sample(load_storage_df(d_level = "tissue_sample"))
+    df_tissue_portion(load_storage_df(d_level = "tissue_portion"))
+    df_raw_data(load_storage_df(d_level = "raw_data"))
+    repo_setup(load_repo_setup())
+    users_df(load_users_df())
+
+    htmlModalLogIn(users_df = users_df())
+
+  }, ignoreInit = ignoreInit)
+
+
 
   ### tester
   oe <- shiny::observeEvent(input$test, {
 
-    print(1)
+    repo_setup()$version %>% print()
 
-    shinydashboard::updateTabItems(session, inputId = "sidebar", selected = "tab_projects")
-
-  })
+  }, ignoreInit = ignoreInit)
 
 
   ### close modal
@@ -1558,11 +1838,40 @@ launchLabOrgaServer <- function(input, output, session){
 
     shiny::removeModal()
 
-  })
+  }, ignoreInit = ignoreInit)
+
+
+
 
 
 # outputs -----------------------------------------------------------------
 
+  output$chosen_storage_folder <- shiny::renderText({
+
+    shiny::validate(
+      shiny::need(
+        expr = shiny::isTruthy(prel_dir()),
+        message = "No storage folder chosen."
+      )
+    )
+
+    shiny::validate(
+      shiny::need(
+        expr = validate_project_name(input$project_name),
+        message = "Invalid or missing project name."
+      )
+    )
+
+    shiny::validate(
+      shiny::need(
+        expr = !base::dir.exists(project_dir()),
+        message = glue::glue("Directory {project_dir()} already exists.")
+      )
+    )
+
+    project_dir()
+
+  })
 
   output$filtered_data_table_tissue_donor <- DT::renderDataTable({
 
@@ -1650,40 +1959,58 @@ launchLabOrgaServer <- function(input, output, session){
   options = list(pageLength = 30, scrollX = TRUE, scrollY = TRUE, searching = FALSE, lengthChange = F),
   selection = list(mode = "multiple", selected = NULL, target = "row"))
 
+  output$vb_devices <- shinydashboard::renderValueBox({
 
-  output$chosen_storage_folder <- shiny::renderText({
-
-    shiny::validate(
-      shiny::need(
-        expr = shiny::isTruthy(prel_dir()),
-        message = "No storage folder chosen."
-      )
+    shinydashboard::valueBox(
+      value = repo_setup()$connected_with %>% base::length(),
+      subtitle = "Connected Devices"
     )
-
-    shiny::validate(
-      shiny::need(
-        expr = validate_project_name(input$project_name),
-        message = "Invalid or missing project name."
-      )
-    )
-
-    shiny::validate(
-      shiny::need(
-        expr = !base::dir.exists(project_dir()),
-        message = glue::glue("Directory {project_dir()} already exists.")
-      )
-    )
-
-    project_dir()
 
   })
 
-  # start app with login modal
-  shiny::observeEvent(input$nothing, {
+  output$vb_tissue_donor <- shinydashboard::renderValueBox({
 
-    htmlModalLogIn(users_df = users_df())
+    shinydashboard::valueBox(
+      value = base::nrow(df_tissue_donor()),
+      subtitle = "Tissue Donors"
+    )
 
-  }, ignoreInit = FALSE, ignoreNULL = FALSE)
+  })
 
+  output$vb_tissue_sample <- shinydashboard::renderValueBox({
+
+    shinydashboard::valueBox(
+      value = base::nrow(df_tissue_sample()),
+      subtitle = "Tissue Samples"
+    )
+
+  })
+
+  output$vb_tissue_portion <- shinydashboard::renderValueBox({
+
+    shinydashboard::valueBox(
+      value = base::nrow(df_tissue_portion()),
+      subtitle = "Tissue Portions"
+    )
+
+  })
+
+  output$vb_raw_data <- shinydashboard::renderValueBox({
+
+    shinydashboard::valueBox(
+      value = base::nrow(df_raw_data()),
+      subtitle = "Raw Data"
+    )
+
+  })
+
+  output$vb_users <- shinydashboard::renderValueBox({
+
+    shinydashboard::valueBox(
+      value = base::nrow(users_df()),
+      subtitle = "Registered Users"
+    )
+
+  })
 
 }
