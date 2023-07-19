@@ -21,7 +21,7 @@ Imports:
     shiny,
     shinyBS,
     shinybusy,
-    shinydasboard,
+    shinydashboard,
     shinyFiles,
     shinyhelper,
     shinyjqui, 

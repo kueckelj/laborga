@@ -1110,12 +1110,10 @@ htmlModalDataEntryView <- function(df, id){
     dplyr::filter(df, !!rlang::sym(id_var) == {{id}}) %>%
     dplyr::select(dplyr::any_of(base::names(data_variables)))
 
-
   var_order <-
     purrr::map_chr(data_variables[base::colnames(df_selected)], .f = ~ .x$label) %>%
     base::order() %>%
     base::unname()
-
 
   shiny::showModal(
     ui = shiny::modalDialog(
@@ -1127,7 +1125,7 @@ htmlModalDataEntryView <- function(df, id){
           purrr::map(
             .x = base::colnames(df_selected)[var_order],
             .f = function(cname){
-print(cname)
+
               val <- df_selected[[cname]]
 
               if(base::is.na(val) | base::is.null(val) | purrr::is_empty(val)){
@@ -1179,8 +1177,6 @@ htmlModalDeleteEntry <- function(d_level, id){
     text <- "This can not be undone."
 
   }
-
-
 
   shiny::showModal(
     ui = shiny::modalDialog(
