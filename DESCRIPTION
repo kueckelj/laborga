@@ -12,9 +12,25 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.0
 Imports:
     dplyr,
+    DT,
+    glue,
     magrittr,
     options,
+    purrr,
+    rlang,
+    shiny,
+    shinyBS,
+    shinybusy,
+    shinydasboard,
+    shinyFiles,
+    shinyhelper,
+    shinyjqui, 
+    shinyjs,
+    shinyWidgets,
+    stringr,
     tidyr,
+    utils,
+    zip
 Collate: 
     '0_imported.R'
     'fns.R'

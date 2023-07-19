@@ -1,5 +1,5 @@
 
-
+#' @export
 launchLabOrgaUI <- function(){
 
   shinydashboard::dashboardPage(

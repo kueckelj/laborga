@@ -2103,9 +2103,6 @@ remove_id_column <- function(df, d_level = NULL){
 
 # s -----------------------------------------------------------------------
 
-
-
-
 show_entry <- function(id){
 
   d_level <- identify_d_level(id)

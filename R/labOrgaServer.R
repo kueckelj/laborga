@@ -1,5 +1,6 @@
 
 
+#' @export
 launchLabOrgaServer <- function(input, output, session){
 
   # shiny add ons
